@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 type Scheduler struct {
@@ -34,6 +35,12 @@ func (s *Scheduler) Add(task *Task) (uuid.UUID, error) {
 	if task.Id != uuid.Nil {
 		return uuid.Nil, errors.New("I am choosing the uuid, not you")
 	}
+	if task.CPU <= 0 {
+		return uuid.Nil, errors.New("CPU must be > 0")
+	}
+	if task.RAM <= 0 {
+		return uuid.Nil, errors.New("RAM must be > 0")
+	}
 	if task.CPU > s.playGround.CPU {
 		return uuid.Nil, errors.New("Too much CPU is required")
 	}
@@ -48,6 +55,10 @@ func (s *Scheduler) Add(task *Task) (uuid.UUID, error) {
 	}
 	task.Id = id
 	s.tasks[id] = task
+	if len(s.tasks) == 1 { // tasks list was empty
+		s.events <- 1
+	}
+	log.WithField("task", *task).Info("adding task")
 	return id, nil
 }
 
@@ -68,23 +79,46 @@ func (t TaskByKarma) Less(i, j int) bool {
 
 func (s *Scheduler) Start(ctx context.Context) {
 	for {
-		todos := s.readyToGo()
-		if len(todos) == 0 { // nothing is ready  just wait
-			now := time.Now()
+		var sleep time.Duration
+		var todos []*Task
+		l := log.WithField("tasks", len(s.tasks))
+		if len(s.tasks) == 0 {
+			sleep = 10 * time.Second
+		} else {
+			todos = s.readyToGo()
+			if len(todos) == 0 { // nothing is ready  just wait
+				n := s.next()
+				now := time.Now()
+				if n.Start.Before(now) { // Start is correct, but there is not enough ressources
+					sleep = 10 * time.Second
+				} else {
+					sleep = n.Start.Sub(now)
+				}
+			}
+		}
+		if sleep != 0 {
+			l.Info("Sleeping ", sleep)
 			select {
-			case <-time.After(s.next().Start.Sub(now)):
-
+			case <-time.After(sleep):
+				continue
 			case <-s.events:
-
+				continue
 			}
 		} else { // Something todo
+			l.WithField("todos", len(todos)).Info()
 			s.lock.Lock()
-			defer s.lock.Unlock()
 			chosen := todos[0]
 			s.CPU -= chosen.CPU
 			s.RAM -= chosen.RAM
-			go chosen.Action(context.Background())
+			go func() {
+				chosen.Action(context.Background())
+				s.lock.Lock()
+				s.CPU += chosen.CPU
+				s.RAM += chosen.RAM
+				s.lock.Unlock()
+			}()
 			delete(s.tasks, chosen.Id)
+			s.lock.Unlock()
 		}
 	}
 }
@@ -105,10 +139,14 @@ func (s *Scheduler) readyToGo() []*Task {
 }
 
 func (s *Scheduler) next() *Task {
+	if len(s.tasks) == 0 {
+		return nil
+	}
 	tasks := make(TaskByStart, len(s.tasks))
 	i := 0
 	for _, task := range s.tasks {
 		tasks[i] = task
+		i++
 	}
 	sort.Sort(tasks)
 	return tasks[0]
