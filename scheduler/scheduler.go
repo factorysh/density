@@ -83,7 +83,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			chosen := todos[0]
 			s.CPU -= chosen.CPU
 			s.RAM -= chosen.RAM
-			chosen.Action(context.Background())
+			go chosen.Action(context.Background())
 			delete(s.tasks, chosen.Id)
 		}
 	}
