@@ -89,10 +89,11 @@ func (s *Scheduler) Start(ctx context.Context) {
 			if len(todos) == 0 { // nothing is ready  just wait
 				n := s.next()
 				now := time.Now()
-				if n.Start.Before(now) { // Start is correct, but there is not enough ressources
+				sleep = n.Start.Sub(now)
+				if sleep <= 0 {
+					// FIXME
+					l.WithField("sleep", sleep).Warn()
 					sleep = 10 * time.Second
-				} else {
-					sleep = n.Start.Sub(now)
 				}
 			}
 		}
