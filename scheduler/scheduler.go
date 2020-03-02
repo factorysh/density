@@ -79,16 +79,17 @@ func (t TaskByKarma) Less(i, j int) bool {
 
 func (s *Scheduler) Start(ctx context.Context) {
 	for {
-		var sleep time.Duration
+		var sleep time.Duration = 0
 		var todos []*Task
 		l := log.WithField("tasks", len(s.tasks))
 		if len(s.tasks) == 0 {
 			sleep = 10 * time.Second
 		} else {
 			todos = s.readyToGo()
+			l = l.WithField("todos", len(todos))
 			if len(todos) == 0 { // nothing is ready  just wait
-				n := s.next()
 				now := time.Now()
+				n := s.next()
 				sleep = n.Start.Sub(now)
 				if sleep <= 0 {
 					// FIXME
