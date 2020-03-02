@@ -146,6 +146,8 @@ func (s *Scheduler) next() *Task {
 	}
 	tasks := make(TaskByStart, len(s.tasks))
 	i := 0
+	s.lock.RLock()
+	defer s.lock.RUnlock()
 	for _, task := range s.tasks {
 		tasks[i] = task
 		i++
