@@ -18,6 +18,8 @@ type Scheduler struct {
 	events     chan int
 	CPU        int
 	RAM        int
+	processes  int
+	waiting    bool
 }
 
 func New(playground Playground) *Scheduler {
@@ -41,22 +43,27 @@ func (s *Scheduler) Add(task *Task) (uuid.UUID, error) {
 	if task.RAM <= 0 {
 		return uuid.Nil, errors.New("RAM must be > 0")
 	}
+	if task.MaxExectionTime <= 0 {
+		return uuid.Nil, errors.New("MaxExectionTime must be > 0")
+	}
 	if task.CPU > s.playGround.CPU {
 		return uuid.Nil, errors.New("Too much CPU is required")
 	}
 	if task.RAM > s.playGround.RAM {
 		return uuid.Nil, errors.New("Too much RAM is required")
 	}
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return id, err
 	}
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	task.Id = id
 	s.tasks[id] = task
-	if len(s.tasks) == 1 { // tasks list was empty
+	if s.waiting {
+		log.Info("Fresh event")
 		s.events <- 1
+		s.waiting = false
 	}
 	log.WithField("task", *task).Info("adding task")
 	return id, nil
@@ -83,7 +90,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 		var todos []*Task
 		l := log.WithField("tasks", len(s.tasks))
 		if len(s.tasks) == 0 {
-			sleep = 10 * time.Second
+			sleep = 1 * time.Second
 		} else {
 			todos = s.readyToGo()
 			l = l.WithField("todos", len(todos))
@@ -94,16 +101,19 @@ func (s *Scheduler) Start(ctx context.Context) {
 				if sleep <= 0 {
 					// FIXME
 					l.WithField("sleep", sleep).Warn()
-					sleep = 10 * time.Second
+					sleep = 1 * time.Second
 				}
 			}
 		}
-		if sleep != 0 {
+		if sleep > 0 {
+			s.waiting = true
 			l.Info("Sleeping ", sleep)
 			select {
 			case <-time.After(sleep):
+				log.Info("Sleep done")
 				continue
 			case <-s.events:
+				log.Info("An event stop the timer")
 				continue
 			}
 		} else { // Something todo
@@ -112,11 +122,14 @@ func (s *Scheduler) Start(ctx context.Context) {
 			chosen := todos[0]
 			s.CPU -= chosen.CPU
 			s.RAM -= chosen.RAM
+			s.processes++
+			log.WithField("cpu", s.CPU).WithField("ram", s.RAM).WithField("process", s.processes).Info()
 			go func() {
 				chosen.Action(context.Background())
 				s.lock.Lock()
 				s.CPU += chosen.CPU
 				s.RAM += chosen.RAM
+				s.processes--
 				s.lock.Unlock()
 			}()
 			delete(s.tasks, chosen.Id)
@@ -144,10 +157,10 @@ func (s *Scheduler) next() *Task {
 	if len(s.tasks) == 0 {
 		return nil
 	}
-	tasks := make(TaskByStart, len(s.tasks))
 	i := 0
 	s.lock.RLock()
 	defer s.lock.RUnlock()
+	tasks := make(TaskByStart, len(s.tasks))
 	for _, task := range s.tasks {
 		tasks[i] = task
 		i++
