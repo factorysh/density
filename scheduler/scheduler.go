@@ -87,35 +87,27 @@ func (t TaskByKarma) Less(i, j int) bool {
 func (s *Scheduler) Start(ctx context.Context) {
 	for {
 		var sleep time.Duration = 0
-		var todos []*Task
 		l := log.WithField("tasks", len(s.tasks))
-		if len(s.tasks) == 0 {
-			sleep = 1 * time.Second
-		} else {
-			todos = s.readyToGo()
-			l = l.WithField("todos", len(todos))
-			if len(todos) == 0 { // nothing is ready  just wait
-				now := time.Now()
-				n := s.next()
-				sleep = n.Start.Sub(now)
-				if sleep <= 0 {
-					// FIXME
-					l.WithField("sleep", sleep).Warn()
-					sleep = 1 * time.Second
-				}
+		todos := s.readyToGo()
+		l = l.WithField("todos", len(todos))
+		if len(todos) == 0 { // nothing is ready  just wait
+			now := time.Now()
+			n := s.next()
+			if n == nil {
+				sleep = 5 * time.Second
+			} else {
+				sleep = now.Sub(n.Start)
 			}
-		}
-		if sleep > 0 {
 			s.waiting = true
 			l.Info("Sleeping ", sleep)
 			select {
 			case <-time.After(sleep):
 				log.Info("Sleep done")
-				continue
 			case <-s.events:
 				log.Info("An event stop the timer")
-				continue
 			}
+			s.waiting = false
+			continue
 		} else { // Something todo
 			l.WithField("todos", len(todos)).Info()
 			s.lock.Lock()
@@ -124,14 +116,14 @@ func (s *Scheduler) Start(ctx context.Context) {
 			s.RAM -= chosen.RAM
 			s.processes++
 			log.WithField("cpu", s.CPU).WithField("ram", s.RAM).WithField("process", s.processes).Info()
-			go func() {
+			go func(cpu, ram int) {
 				chosen.Action(context.Background())
 				s.lock.Lock()
-				s.CPU += chosen.CPU
-				s.RAM += chosen.RAM
+				s.CPU += cpu
+				s.RAM += ram
 				s.processes--
 				s.lock.Unlock()
-			}()
+			}(chosen.CPU, chosen.RAM)
 			delete(s.tasks, chosen.Id)
 			s.lock.Unlock()
 		}
