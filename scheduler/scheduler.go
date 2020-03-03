@@ -107,22 +107,26 @@ func (s *Scheduler) Start(ctx context.Context) {
 			} else {
 				sleep = now.Sub(n.Start)
 			}
+			l.WithField("sleep", sleep).Info("Waiting")
 			go func() {
 				time.Sleep(sleep)
 				s.events <- 1
 			}()
 		} else { // Something todo
-			l.WithField("todos", len(todos)).Info()
 			s.lock.Lock()
 			chosen := todos[0]
 			s.CPU -= chosen.CPU
 			s.RAM -= chosen.RAM
 			s.processes++
-			log.WithField("cpu", s.CPU).WithField("ram", s.RAM).WithField("process", s.processes).Info()
-			go func(task *Task, cpu, ram int) {
+			l.WithFields(log.Fields{
+				"cpu":     s.CPU,
+				"ram":     s.RAM,
+				"process": s.processes,
+			}).Info()
+			go func(task *Task) {
 				chosen.Action(context.WithValue(context.TODO(), "task", task))
 				s.tasksDone <- task // a slot is now free, let's try to full it
-			}(chosen, chosen.CPU, chosen.RAM)
+			}(chosen)
 			delete(s.tasks, chosen.Id)
 			s.lock.Unlock()
 		}
