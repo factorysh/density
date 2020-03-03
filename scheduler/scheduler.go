@@ -12,16 +12,15 @@ import (
 )
 
 type Scheduler struct {
-	playGround  Playground
-	tasks       map[uuid.UUID]*Task
-	lock        sync.RWMutex
-	waitingLock sync.RWMutex
-	events      chan int
-	newTasks    chan *Task
-	CPU         int
-	RAM         int
-	processes   int
-	waiting     bool
+	playGround Playground
+	tasks      map[uuid.UUID]*Task
+	lock       sync.RWMutex
+	events     chan int
+	tasksTodo  chan *Task
+	tasksDone  chan *Task
+	CPU        int
+	RAM        int
+	processes  int
 }
 
 func New(playground Playground) *Scheduler {
@@ -30,7 +29,8 @@ func New(playground Playground) *Scheduler {
 		tasks:      make(map[uuid.UUID]*Task),
 		lock:       sync.RWMutex{},
 		events:     make(chan int, 100),
-		newTasks:   make(chan *Task, 100),
+		tasksTodo:  make(chan *Task, 100),
+		tasksDone:  make(chan *Task, 100),
 		CPU:        playground.CPU,
 		RAM:        playground.RAM,
 	}
@@ -60,7 +60,7 @@ func (s *Scheduler) Add(task *Task) (uuid.UUID, error) {
 		return id, err
 	}
 	task.Id = id
-	s.newTasks <- task
+	s.tasksTodo <- task
 	return id, nil
 }
 
@@ -82,9 +82,16 @@ func (t TaskByKarma) Less(i, j int) bool {
 func (s *Scheduler) Start(ctx context.Context) {
 	for {
 		select {
-		case task := <-s.newTasks:
+		case task := <-s.tasksTodo:
 			s.lock.Lock()
 			s.tasks[task.Id] = task
+			s.lock.Unlock()
+		case task := <-s.tasksDone:
+			s.lock.Lock()
+			delete(s.tasks, task.Id)
+			s.CPU += task.CPU
+			s.RAM += task.RAM
+			s.processes--
 			s.lock.Unlock()
 		case <-s.events:
 		}
@@ -114,12 +121,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			log.WithField("cpu", s.CPU).WithField("ram", s.RAM).WithField("process", s.processes).Info()
 			go func(task *Task, cpu, ram int) {
 				chosen.Action(context.WithValue(context.TODO(), "task", task))
-				s.lock.Lock()
-				s.CPU += cpu
-				s.RAM += ram
-				s.processes--
-				s.lock.Unlock()
-				s.events <- 1 // a slot is now free, let's try to full it
+				s.tasksDone <- task // a slot is now free, let's try to full it
 			}(chosen, chosen.CPU, chosen.RAM)
 			delete(s.tasks, chosen.Id)
 			s.lock.Unlock()
