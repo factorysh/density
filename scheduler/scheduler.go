@@ -96,7 +96,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			n := s.next()
 			var sleep time.Duration = 0
 			if n == nil {
-				sleep = 5 * time.Second
+				sleep = 1 * time.Second
 			} else {
 				sleep = now.Sub(n.Start)
 			}
@@ -112,14 +112,15 @@ func (s *Scheduler) Start(ctx context.Context) {
 			s.RAM -= chosen.RAM
 			s.processes++
 			log.WithField("cpu", s.CPU).WithField("ram", s.RAM).WithField("process", s.processes).Info()
-			go func(cpu, ram int) {
-				chosen.Action(context.Background())
+			go func(task *Task, cpu, ram int) {
+				chosen.Action(context.WithValue(context.TODO(), "task", task))
 				s.lock.Lock()
 				s.CPU += cpu
 				s.RAM += ram
 				s.processes--
 				s.lock.Unlock()
-			}(chosen.CPU, chosen.RAM)
+				s.events <- 1 // a slot is now free, let's try to full it
+			}(chosen, chosen.CPU, chosen.RAM)
 			delete(s.tasks, chosen.Id)
 			s.lock.Unlock()
 		}

@@ -87,8 +87,11 @@ func TestFlood(t *testing.T) {
 		CPU: 4,
 		RAM: 16 * 1024,
 	})
-	actions := make([]int, 0)
+	actions := make([]uuid.UUID, 0)
 	wait := sync.WaitGroup{}
+	ctx, cancel := context.WithCancel(context.Background())
+	go s.Start(ctx)
+	defer cancel()
 	size := 30
 	for i := 0; i < size; i++ {
 		wait.Add(1)
@@ -97,21 +100,17 @@ func TestFlood(t *testing.T) {
 			CPU:             rand.Intn(4) + 1,
 			RAM:             (rand.Intn(16) + 1) * 256,
 			MaxExectionTime: 30 * time.Second,
-			Action: func(context.Context) error {
-				n := i
+			Action: func(ctx context.Context) error {
+				t, _ := ctx.Value("task").(*Task)
 				time.Sleep(time.Duration(int64(rand.Intn(250)+1)) * time.Millisecond)
-				fmt.Println("Done ", n)
-				actions = append(actions, n)
+				fmt.Println("Done ", t.Id)
+				actions = append(actions, t.Id)
 				wait.Done()
 				return nil
 			},
 		})
 	}
-	assert.Len(t, s.tasks, size)
-	ctx, cancel := context.WithCancel(context.Background())
-	go s.Start(ctx)
-	defer cancel()
 	wait.Wait()
-	sort.Ints(actions)
-	fmt.Println(actions)
+	fmt.Println(len(actions), actions)
+	assert.Len(t, actions, size)
 }
