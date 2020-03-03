@@ -12,14 +12,16 @@ import (
 )
 
 type Scheduler struct {
-	playGround Playground
-	tasks      map[uuid.UUID]*Task
-	lock       sync.RWMutex
-	events     chan int
-	CPU        int
-	RAM        int
-	processes  int
-	waiting    bool
+	playGround  Playground
+	tasks       map[uuid.UUID]*Task
+	lock        sync.RWMutex
+	waitingLock sync.RWMutex
+	events      chan int
+	newTasks    chan *Task
+	CPU         int
+	RAM         int
+	processes   int
+	waiting     bool
 }
 
 func New(playground Playground) *Scheduler {
@@ -27,7 +29,8 @@ func New(playground Playground) *Scheduler {
 		playGround: playground,
 		tasks:      make(map[uuid.UUID]*Task),
 		lock:       sync.RWMutex{},
-		events:     make(chan int),
+		events:     make(chan int, 100),
+		newTasks:   make(chan *Task, 100),
 		CPU:        playground.CPU,
 		RAM:        playground.RAM,
 	}
@@ -56,16 +59,8 @@ func (s *Scheduler) Add(task *Task) (uuid.UUID, error) {
 	if err != nil {
 		return id, err
 	}
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	task.Id = id
-	s.tasks[id] = task
-	if s.waiting {
-		log.Info("Fresh event")
-		s.events <- 1
-		s.waiting = false
-	}
-	log.WithField("task", *task).Info("adding task")
+	s.newTasks <- task
 	return id, nil
 }
 
@@ -86,28 +81,29 @@ func (t TaskByKarma) Less(i, j int) bool {
 
 func (s *Scheduler) Start(ctx context.Context) {
 	for {
-		var sleep time.Duration = 0
+		select {
+		case task := <-s.newTasks:
+			s.lock.Lock()
+			s.tasks[task.Id] = task
+			s.lock.Unlock()
+		case <-s.events:
+		}
 		l := log.WithField("tasks", len(s.tasks))
 		todos := s.readyToGo()
 		l = l.WithField("todos", len(todos))
 		if len(todos) == 0 { // nothing is ready  just wait
 			now := time.Now()
 			n := s.next()
+			var sleep time.Duration = 0
 			if n == nil {
 				sleep = 5 * time.Second
 			} else {
 				sleep = now.Sub(n.Start)
 			}
-			s.waiting = true
-			l.Info("Sleeping ", sleep)
-			select {
-			case <-time.After(sleep):
-				log.Info("Sleep done")
-			case <-s.events:
-				log.Info("An event stop the timer")
-			}
-			s.waiting = false
-			continue
+			go func() {
+				time.Sleep(sleep)
+				s.events <- 1
+			}()
 		} else { // Something todo
 			l.WithField("todos", len(todos)).Info()
 			s.lock.Lock()

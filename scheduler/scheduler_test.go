@@ -83,17 +83,14 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestFlood(t *testing.T) {
-
 	s := New(Playground{
 		CPU: 4,
 		RAM: 16 * 1024,
 	})
-	ctx, cancel := context.WithCancel(context.Background())
-	go s.Start(ctx)
-	defer cancel()
 	actions := make([]int, 0)
 	wait := sync.WaitGroup{}
-	for i := 0; i < 30; i++ {
+	size := 30
+	for i := 0; i < size; i++ {
 		wait.Add(1)
 		s.Add(&Task{
 			Start:           time.Now(),
@@ -103,12 +100,17 @@ func TestFlood(t *testing.T) {
 			Action: func(context.Context) error {
 				n := i
 				time.Sleep(time.Duration(int64(rand.Intn(250)+1)) * time.Millisecond)
+				fmt.Println("Done ", n)
 				actions = append(actions, n)
 				wait.Done()
 				return nil
 			},
 		})
 	}
+	assert.Len(t, s.tasks, size)
+	ctx, cancel := context.WithCancel(context.Background())
+	go s.Start(ctx)
+	defer cancel()
 	wait.Wait()
 	sort.Ints(actions)
 	fmt.Println(actions)
