@@ -16,6 +16,7 @@ type Task struct {
 	RAM             int
 	Action          Action
 	Id              uuid.UUID
+	Cancel          context.CancelFunc
 }
 
 // Action does something

@@ -106,6 +106,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 				sleep = 1 * time.Second
 			} else {
 				sleep = now.Sub(n.Start)
+				l = l.WithField("task", n.Id)
 			}
 			l.WithField("sleep", sleep).Info("Waiting")
 			go func() {
@@ -124,7 +125,10 @@ func (s *Scheduler) Start(ctx context.Context) {
 				"process": s.processes,
 			}).Info()
 			go func(task *Task) {
-				chosen.Action(context.WithValue(context.TODO(), "task", task))
+				ctx, task.Cancel = context.WithTimeout(
+					context.WithValue(context.TODO(), "task", task), task.MaxExectionTime)
+				defer task.Cancel()
+				chosen.Action(ctx)
 				s.tasksDone <- task // a slot is now free, let's try to full it
 			}(chosen)
 			delete(s.tasks, chosen.Id)

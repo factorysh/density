@@ -114,3 +114,40 @@ func TestFlood(t *testing.T) {
 	fmt.Println(len(actions), actions)
 	assert.Len(t, actions, size)
 }
+
+func TestTimeout(t *testing.T) {
+	s := New(Playground{
+		CPU: 4,
+		RAM: 16 * 1024,
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	go s.Start(ctx)
+	defer cancel()
+
+	wait := sync.WaitGroup{}
+	wait.Add(1)
+	var action string
+	task := &Task{
+		Start:           time.Now(),
+		CPU:             2,
+		RAM:             256,
+		MaxExectionTime: 1 * time.Second,
+		Action: func(ctx context.Context) error {
+			select {
+			case <-time.After(2 * time.Second):
+				fmt.Println("2s")
+				action = "waiting"
+			case <-ctx.Done():
+				fmt.Println("canceled")
+				action = "canceled"
+			}
+			wait.Done()
+			return nil
+		},
+	}
+	_, err := s.Add(task)
+	assert.NoError(t, err)
+	wait.Wait()
+	assert.Equal(t, "canceled", action)
+
+}
