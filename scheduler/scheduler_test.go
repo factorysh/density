@@ -39,7 +39,7 @@ func TestScheduler(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, id)
 	fmt.Println("id", id)
 	wait.Wait()
-	assert.Len(t, s.tasks, 0)
+	assert.Len(t, s.readyToGo(), 0)
 
 	// Second part
 
@@ -149,5 +149,48 @@ func TestTimeout(t *testing.T) {
 	assert.NoError(t, err)
 	wait.Wait()
 	assert.Equal(t, "canceled", action)
+	assert.Len(t, s.tasks, 1)
+	for _, tt := range s.tasks {
+		assert.NotEqual(t, Waiting, tt.Status)
+		assert.NotEqual(t, Running, tt.Status)
+	}
+}
 
+func TestCancel(t *testing.T) {
+	s := New(Playground{
+		CPU: 4,
+		RAM: 16 * 1024,
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	go s.Start(ctx)
+	defer cancel()
+
+	wait := sync.WaitGroup{}
+	wait.Add(1)
+	var action string
+	task := &Task{
+		Start:           time.Now(),
+		CPU:             2,
+		RAM:             256,
+		MaxExectionTime: 31 * time.Second,
+		Action: func(ctx context.Context) error {
+			select {
+			case <-time.After(2 * time.Second):
+				fmt.Println("2s")
+				action = "waiting"
+			case <-ctx.Done():
+				fmt.Println("canceled")
+				action = "canceled"
+			}
+			wait.Done()
+			return nil
+		},
+	}
+	id, err := s.Add(task)
+	assert.NoError(t, err)
+	err = s.Cancel(id)
+	assert.NoError(t, err)
+	wait.Wait()
+	assert.Equal(t, 1, s.Length())
+	assert.Equal(t, "canceled", action)
 }

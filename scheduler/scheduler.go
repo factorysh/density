@@ -28,9 +28,9 @@ func New(playground Playground) *Scheduler {
 		playGround: playground,
 		tasks:      make(map[uuid.UUID]*Task),
 		lock:       sync.RWMutex{},
-		events:     make(chan int, 100),
-		tasksTodo:  make(chan *Task, 100),
-		tasksDone:  make(chan *Task, 100),
+		events:     make(chan int),
+		tasksTodo:  make(chan *Task),
+		tasksDone:  make(chan *Task),
 		CPU:        playground.CPU,
 		RAM:        playground.RAM,
 	}
@@ -57,38 +57,26 @@ func (s *Scheduler) Add(task *Task) (uuid.UUID, error) {
 	}
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return id, err
+		return uuid.Nil, err
 	}
 	task.Id = id
+	task.Status = Waiting
+	s.lock.Lock()
+	s.tasks[task.Id] = task
+	s.lock.Unlock()
 	s.tasksTodo <- task
 	return id, nil
-}
-
-type TaskByStart []*Task
-
-func (t TaskByStart) Len() int           { return len(t) }
-func (t TaskByStart) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
-func (t TaskByStart) Less(i, j int) bool { return t[i].Start.Before(t[j].Start) }
-
-type TaskByKarma []*Task
-
-func (t TaskByKarma) Len() int      { return len(t) }
-func (t TaskByKarma) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
-func (t TaskByKarma) Less(i, j int) bool {
-	return (t[i].RAM * t[i].CPU / int(int64(t[i].MaxExectionTime))) <
-		(t[j].RAM * t[j].CPU / int(int64(t[j].MaxExectionTime)))
 }
 
 func (s *Scheduler) Start(ctx context.Context) {
 	for {
 		select {
-		case task := <-s.tasksTodo:
-			s.lock.Lock()
-			s.tasks[task.Id] = task
-			s.lock.Unlock()
+		case <-s.tasksTodo:
 		case task := <-s.tasksDone:
 			s.lock.Lock()
-			delete(s.tasks, task.Id)
+			task.Status = Done
+			// FIXME lets garbage collector, later
+			//delete(s.tasks, task.Id)
 			s.CPU += task.CPU
 			s.RAM += task.RAM
 			s.processes--
@@ -124,14 +112,21 @@ func (s *Scheduler) Start(ctx context.Context) {
 				"ram":     s.RAM,
 				"process": s.processes,
 			}).Info()
-			go func(task *Task) {
-				ctx, task.Cancel = context.WithTimeout(
-					context.WithValue(context.TODO(), "task", task), task.MaxExectionTime)
+			chosen.Status = Running
+			var ctx context.Context
+			ctx, chosen.Cancel = context.WithTimeout(
+				context.WithValue(context.TODO(), "task", chosen), chosen.MaxExectionTime)
+			if chosen.Cancel == nil {
+				panic("aaaah")
+			}
+			go func(ctx context.Context, task *Task) {
+				if task.Cancel == nil {
+					panic("oups")
+				}
 				defer task.Cancel()
-				chosen.Action(ctx)
+				task.Action(ctx)
 				s.tasksDone <- task // a slot is now free, let's try to full it
-			}(chosen)
-			delete(s.tasks, chosen.Id)
+			}(ctx, chosen)
 			s.lock.Unlock()
 		}
 	}
@@ -144,7 +139,7 @@ func (s *Scheduler) readyToGo() []*Task {
 	defer s.lock.RUnlock()
 	for _, task := range s.tasks {
 		// enough CPU, enough RAM, Start date is okay
-		if task.Start.Before(now) && task.CPU <= s.CPU && task.RAM <= s.RAM {
+		if task.Start.Before(now) && task.CPU <= s.CPU && task.RAM <= s.RAM && task.Status == Waiting {
 			tasks = append(tasks, task)
 		}
 	}
@@ -156,14 +151,38 @@ func (s *Scheduler) next() *Task {
 	if len(s.tasks) == 0 {
 		return nil
 	}
-	i := 0
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	tasks := make(TaskByStart, len(s.tasks))
+	tasks := make(TaskByStart, 0)
 	for _, task := range s.tasks {
-		tasks[i] = task
-		i++
+		if task.Status == Waiting {
+			tasks = append(tasks, task)
+		}
+	}
+	if len(tasks) == 0 {
+		return nil
 	}
 	sort.Sort(tasks)
 	return tasks[0]
+}
+
+// Cancel a task
+func (s *Scheduler) Cancel(id uuid.UUID) error {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	task, ok := s.tasks[id]
+	if !ok {
+		return errors.New("Unknown id")
+	}
+	if task.Status == Running {
+		task.Cancel()
+	}
+	task.Status = Canceled
+	return nil
+}
+
+func (s *Scheduler) Length() int {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return len(s.tasks)
 }
