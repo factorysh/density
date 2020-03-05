@@ -18,6 +18,7 @@ type Task struct {
 	Id              uuid.UUID
 	Cancel          context.CancelFunc
 	Status          Status
+	Mtime           time.Time
 }
 
 // Action does something

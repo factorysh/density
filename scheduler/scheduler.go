@@ -62,6 +62,7 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	}
 	task.Id = id
 	task.Status = _task.Waiting
+	task.Mtime = time.Now()
 	s.lock.Lock()
 	s.tasks[task.Id] = task
 	s.lock.Unlock()
@@ -75,6 +76,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 		case <-s.tasksTodo:
 		case task := <-s.tasksDone:
 			s.lock.Lock()
+			task.Mtime = time.Now()
 			task.Status = _task.Done
 			// FIXME lets garbage collector, later
 			//delete(s.tasks, task.Id)
@@ -114,6 +116,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 				"process": s.processes,
 			}).Info()
 			chosen.Status = _task.Running
+			chosen.Mtime = time.Now()
 			var ctx context.Context
 			ctx, chosen.Cancel = context.WithTimeout(
 				context.WithValue(context.TODO(), "task", chosen), chosen.MaxExectionTime)
@@ -179,11 +182,27 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 		task.Cancel()
 	}
 	task.Status = _task.Canceled
+	task.Mtime = time.Now()
 	return nil
 }
 
+// Length returns the number of Task
 func (s *Scheduler) Length() int {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return len(s.tasks)
+}
+
+func (s *Scheduler) Flush(age time.Duration) int {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	now := time.Now()
+	i := 0
+	for id, task := range s.tasks {
+		if task.Status != _task.Running && task.Status != _task.Waiting && now.Sub(task.Mtime) > age {
+			delete(s.tasks, id)
+			i++
+		}
+	}
+	return i
 }

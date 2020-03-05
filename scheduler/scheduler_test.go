@@ -20,6 +20,7 @@ func TestScheduler(t *testing.T) {
 		RAM: 16 * 1024,
 	})
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go s.Start(ctx)
 	wait := sync.WaitGroup{}
 	wait.Add(1)
@@ -80,7 +81,8 @@ func TestScheduler(t *testing.T) {
 	wait.Wait()
 	sort.Ints(actions)
 	assert.Equal(t, []int{1, 2}, actions)
-	cancel()
+	flushed := s.Flush(0)
+	assert.Equal(t, 3, flushed)
 }
 
 func TestFlood(t *testing.T) {
