@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os/exec"
 	"sort"
 	"sync"
 	"testing"
@@ -196,4 +197,35 @@ func TestCancel(t *testing.T) {
 	wait.Wait()
 	assert.Equal(t, 1, s.Length())
 	assert.Equal(t, "canceled", action)
+}
+
+func TestExec(t *testing.T) {
+	s := New(Playground{
+		CPU: 4,
+		RAM: 16 * 1024,
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	go s.Start(ctx)
+	defer cancel()
+
+	wait := sync.WaitGroup{}
+	wait.Add(1)
+	var action int
+	task := &_task.Task{
+		Start:           time.Now(),
+		CPU:             1,
+		RAM:             64,
+		MaxExectionTime: 1 * time.Second,
+		Action: func(ctx context.Context) error {
+			defer wait.Done()
+			cmd := exec.CommandContext(ctx, "sleep", "5")
+			err := cmd.Run()
+			action = cmd.ProcessState.ExitCode()
+			return err
+		},
+	}
+	_, err := s.Add(task)
+	assert.NoError(t, err)
+	wait.Wait()
+	assert.NotEqual(t, 0, action)
 }
