@@ -7,17 +7,18 @@ import (
 	"sync"
 	"time"
 
+	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type Scheduler struct {
 	playGround Playground
-	tasks      map[uuid.UUID]*Task
+	tasks      map[uuid.UUID]*_task.Task
 	lock       sync.RWMutex
 	events     chan int
-	tasksTodo  chan *Task
-	tasksDone  chan *Task
+	tasksTodo  chan *_task.Task
+	tasksDone  chan *_task.Task
 	CPU        int
 	RAM        int
 	processes  int
@@ -26,17 +27,17 @@ type Scheduler struct {
 func New(playground Playground) *Scheduler {
 	return &Scheduler{
 		playGround: playground,
-		tasks:      make(map[uuid.UUID]*Task),
+		tasks:      make(map[uuid.UUID]*_task.Task),
 		lock:       sync.RWMutex{},
 		events:     make(chan int),
-		tasksTodo:  make(chan *Task),
-		tasksDone:  make(chan *Task),
+		tasksTodo:  make(chan *_task.Task),
+		tasksDone:  make(chan *_task.Task),
 		CPU:        playground.CPU,
 		RAM:        playground.RAM,
 	}
 }
 
-func (s *Scheduler) Add(task *Task) (uuid.UUID, error) {
+func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	if task.Id != uuid.Nil {
 		return uuid.Nil, errors.New("I am choosing the uuid, not you")
 	}
@@ -60,7 +61,7 @@ func (s *Scheduler) Add(task *Task) (uuid.UUID, error) {
 		return uuid.Nil, err
 	}
 	task.Id = id
-	task.Status = Waiting
+	task.Status = _task.Waiting
 	s.lock.Lock()
 	s.tasks[task.Id] = task
 	s.lock.Unlock()
@@ -74,7 +75,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 		case <-s.tasksTodo:
 		case task := <-s.tasksDone:
 			s.lock.Lock()
-			task.Status = Done
+			task.Status = _task.Done
 			// FIXME lets garbage collector, later
 			//delete(s.tasks, task.Id)
 			s.CPU += task.CPU
@@ -112,14 +113,14 @@ func (s *Scheduler) Start(ctx context.Context) {
 				"ram":     s.RAM,
 				"process": s.processes,
 			}).Info()
-			chosen.Status = Running
+			chosen.Status = _task.Running
 			var ctx context.Context
 			ctx, chosen.Cancel = context.WithTimeout(
 				context.WithValue(context.TODO(), "task", chosen), chosen.MaxExectionTime)
 			if chosen.Cancel == nil {
 				panic("aaaah")
 			}
-			go func(ctx context.Context, task *Task) {
+			go func(ctx context.Context, task *_task.Task) {
 				if task.Cancel == nil {
 					panic("oups")
 				}
@@ -132,14 +133,14 @@ func (s *Scheduler) Start(ctx context.Context) {
 	}
 }
 
-func (s *Scheduler) readyToGo() []*Task {
+func (s *Scheduler) readyToGo() []*_task.Task {
 	now := time.Now()
-	tasks := make(TaskByKarma, 0)
+	tasks := make(_task.TaskByKarma, 0)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	for _, task := range s.tasks {
 		// enough CPU, enough RAM, Start date is okay
-		if task.Start.Before(now) && task.CPU <= s.CPU && task.RAM <= s.RAM && task.Status == Waiting {
+		if task.Start.Before(now) && task.CPU <= s.CPU && task.RAM <= s.RAM && task.Status == _task.Waiting {
 			tasks = append(tasks, task)
 		}
 	}
@@ -147,15 +148,15 @@ func (s *Scheduler) readyToGo() []*Task {
 	return tasks
 }
 
-func (s *Scheduler) next() *Task {
+func (s *Scheduler) next() *_task.Task {
 	if len(s.tasks) == 0 {
 		return nil
 	}
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	tasks := make(TaskByStart, 0)
+	tasks := make(_task.TaskByStart, 0)
 	for _, task := range s.tasks {
-		if task.Status == Waiting {
+		if task.Status == _task.Waiting {
 			tasks = append(tasks, task)
 		}
 	}
@@ -174,10 +175,10 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 	if !ok {
 		return errors.New("Unknown id")
 	}
-	if task.Status == Running {
+	if task.Status == _task.Running {
 		task.Cancel()
 	}
-	task.Status = Canceled
+	task.Status = _task.Canceled
 	return nil
 }
 

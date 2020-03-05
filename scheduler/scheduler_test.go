@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,7 +23,7 @@ func TestScheduler(t *testing.T) {
 	go s.Start(ctx)
 	wait := sync.WaitGroup{}
 	wait.Add(1)
-	task := &Task{
+	task := &_task.Task{
 		Start:           time.Now(),
 		MaxExectionTime: 30 * time.Second,
 		Action: func(context.Context) error {
@@ -45,8 +46,8 @@ func TestScheduler(t *testing.T) {
 
 	wait.Add(2)
 	actions := make([]int, 0)
-	for _, task := range []*Task{
-		&Task{
+	for _, task := range []*_task.Task{
+		&_task.Task{
 			Start:           time.Now(),
 			CPU:             2,
 			RAM:             512,
@@ -59,7 +60,7 @@ func TestScheduler(t *testing.T) {
 				return nil
 			},
 		},
-		&Task{
+		&_task.Task{
 			Start:           time.Now(),
 			CPU:             3,
 			RAM:             1024,
@@ -95,13 +96,13 @@ func TestFlood(t *testing.T) {
 	size := 30
 	for i := 0; i < size; i++ {
 		wait.Add(1)
-		s.Add(&Task{
+		s.Add(&_task.Task{
 			Start:           time.Now(),
 			CPU:             rand.Intn(4) + 1,
 			RAM:             (rand.Intn(16) + 1) * 256,
 			MaxExectionTime: 30 * time.Second,
 			Action: func(ctx context.Context) error {
-				t, _ := ctx.Value("task").(*Task)
+				t, _ := ctx.Value("task").(*_task.Task)
 				time.Sleep(time.Duration(int64(rand.Intn(250)+1)) * time.Millisecond)
 				fmt.Println("Done ", t.Id)
 				actions = append(actions, t.Id)
@@ -127,7 +128,7 @@ func TestTimeout(t *testing.T) {
 	wait := sync.WaitGroup{}
 	wait.Add(1)
 	var action string
-	task := &Task{
+	task := &_task.Task{
 		Start:           time.Now(),
 		CPU:             2,
 		RAM:             256,
@@ -151,8 +152,8 @@ func TestTimeout(t *testing.T) {
 	assert.Equal(t, "canceled", action)
 	assert.Len(t, s.tasks, 1)
 	for _, tt := range s.tasks {
-		assert.NotEqual(t, Waiting, tt.Status)
-		assert.NotEqual(t, Running, tt.Status)
+		assert.NotEqual(t, _task.Waiting, tt.Status)
+		assert.NotEqual(t, _task.Running, tt.Status)
 	}
 }
 
@@ -168,7 +169,7 @@ func TestCancel(t *testing.T) {
 	wait := sync.WaitGroup{}
 	wait.Add(1)
 	var action string
-	task := &Task{
+	task := &_task.Task{
 		Start:           time.Now(),
 		CPU:             2,
 		RAM:             256,

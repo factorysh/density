@@ -1,5 +1,5 @@
 //go:generate stringer -type=Status
-package scheduler
+package task
 
 type Status int
 
