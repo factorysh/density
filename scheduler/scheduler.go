@@ -13,27 +13,27 @@ import (
 )
 
 type Scheduler struct {
-	playGround Playground
-	tasks      map[uuid.UUID]*_task.Task
-	lock       sync.RWMutex
-	events     chan int
-	tasksTodo  chan *_task.Task
-	tasksDone  chan *_task.Task
-	CPU        int
-	RAM        int
-	processes  int
+	resources *Resources
+	tasks     map[uuid.UUID]*_task.Task
+	lock      sync.RWMutex
+	events    chan int
+	tasksTodo chan *_task.Task
+	tasksDone chan *_task.Task
+	CPU       int
+	RAM       int
+	processes int
 }
 
-func New(playground Playground) *Scheduler {
+func New(resources *Resources) *Scheduler {
 	return &Scheduler{
-		playGround: playground,
-		tasks:      make(map[uuid.UUID]*_task.Task),
-		lock:       sync.RWMutex{},
-		events:     make(chan int),
-		tasksTodo:  make(chan *_task.Task),
-		tasksDone:  make(chan *_task.Task),
-		CPU:        playground.CPU,
-		RAM:        playground.RAM,
+		resources: resources,
+		tasks:     make(map[uuid.UUID]*_task.Task),
+		lock:      sync.RWMutex{},
+		events:    make(chan int),
+		tasksTodo: make(chan *_task.Task),
+		tasksDone: make(chan *_task.Task),
+		CPU:       resources.TotalCPU,
+		RAM:       resources.TotalRAM,
 	}
 }
 
@@ -50,10 +50,10 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	if task.MaxExectionTime <= 0 {
 		return uuid.Nil, errors.New("MaxExectionTime must be > 0")
 	}
-	if task.CPU > s.playGround.CPU {
+	if task.CPU > s.resources.TotalCPU {
 		return uuid.Nil, errors.New("Too much CPU is required")
 	}
-	if task.RAM > s.playGround.RAM {
+	if task.RAM > s.resources.TotalRAM {
 		return uuid.Nil, errors.New("Too much RAM is required")
 	}
 	id, err := uuid.NewRandom()
