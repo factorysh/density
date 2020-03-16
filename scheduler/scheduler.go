@@ -16,7 +16,7 @@ type Scheduler struct {
 	resources *Resources
 	tasks     map[uuid.UUID]*_task.Task
 	lock      sync.RWMutex
-	events    chan int
+	events    chan interface{}
 	CPU       int
 	RAM       int
 	processes int
@@ -27,7 +27,7 @@ func New(resources *Resources) *Scheduler {
 		resources: resources,
 		tasks:     make(map[uuid.UUID]*_task.Task),
 		lock:      sync.RWMutex{},
-		events:    make(chan int),
+		events:    make(chan interface{}),
 		CPU:       resources.TotalCPU,
 		RAM:       resources.TotalRAM,
 	}
@@ -57,7 +57,7 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	task.Cancel = func() {
 		task.Status = _task.Canceled
 	}
-	s.events <- 0
+	s.events <- new(interface{})
 	return id, nil
 }
 
@@ -83,7 +83,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			l.WithField("sleep", sleep).Info("Waiting")
 			go func() {
 				time.Sleep(sleep)
-				s.events <- 1
+				s.events <- new(interface{})
 			}()
 		} else { // Something todo
 			s.lock.Lock()
@@ -111,7 +111,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 				task.Action(ctx)
 				task.Status = _task.Done
 				task.Mtime = time.Now()
-				s.events <- 0 // a slot is now free, let's try to full it
+				s.events <- new(interface{}) // a slot is now free, let's try to full it
 			}(ctx, chosen)
 			s.lock.Unlock()
 		}
