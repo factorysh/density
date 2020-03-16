@@ -12,7 +12,18 @@ type Resources struct {
 	TotalCPU  int
 	cpu       int
 	processes int
-	lock      sync.RWMutex
+	lock      *sync.RWMutex
+}
+
+func NewResources(cpu, ram int) *Resources {
+	return &Resources{
+		TotalRAM:  ram,
+		ram:       ram,
+		TotalCPU:  cpu,
+		cpu:       cpu,
+		processes: 0,
+		lock:      &sync.RWMutex{},
+	}
 }
 
 func (r *Resources) Check(cpu, ram int) error {
@@ -47,4 +58,10 @@ func (r *Resources) Consume(ctx context.Context, cpu, ram int) {
 			r.lock.Unlock()
 		}
 	}()
+}
+
+func (r *Resources) IsDoable(cpu, ram int) bool {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	return cpu <= r.cpu && ram <= r.ram
 }

@@ -16,10 +16,7 @@ import (
 )
 
 func TestScheduler(t *testing.T) {
-	s := New(&Resources{
-		TotalCPU: 4,
-		TotalRAM: 16 * 1024,
-	})
+	s := New(NewResources(4, 16*1024))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go s.Start(ctx)
@@ -87,10 +84,7 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestFlood(t *testing.T) {
-	s := New(&Resources{
-		TotalCPU: 4,
-		TotalRAM: 16 * 1024,
-	})
+	s := New(NewResources(4, 16*1024))
 	actions := make([]uuid.UUID, 0)
 	wait := sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -120,10 +114,7 @@ func TestFlood(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	s := New(&Resources{
-		TotalCPU: 4,
-		TotalRAM: 16 * 1024,
-	})
+	s := New(NewResources(4, 16*1024))
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -161,10 +152,7 @@ func TestTimeout(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
-	s := New(&Resources{
-		TotalCPU: 4,
-		TotalRAM: 16 * 1024,
-	})
+	s := New(NewResources(4, 16*1024))
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -200,10 +188,7 @@ func TestCancel(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	s := New(&Resources{
-		TotalCPU: 4,
-		TotalRAM: 16 * 1024,
-	})
+	s := New(NewResources(4, 16*1024))
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()

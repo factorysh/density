@@ -17,9 +17,6 @@ type Scheduler struct {
 	tasks     map[uuid.UUID]*_task.Task
 	lock      sync.RWMutex
 	events    chan interface{}
-	CPU       int
-	RAM       int
-	processes int
 }
 
 func New(resources *Resources) *Scheduler {
@@ -28,8 +25,6 @@ func New(resources *Resources) *Scheduler {
 		tasks:     make(map[uuid.UUID]*_task.Task),
 		lock:      sync.RWMutex{},
 		events:    make(chan interface{}),
-		CPU:       resources.TotalCPU,
-		RAM:       resources.TotalRAM,
 	}
 }
 
@@ -91,9 +86,9 @@ func (s *Scheduler) Start(ctx context.Context) {
 			ctxResources, cancelResources := context.WithCancel(context.TODO())
 			s.resources.Consume(ctxResources, chosen.CPU, chosen.RAM)
 			l.WithFields(log.Fields{
-				"cpu":     s.CPU,
-				"ram":     s.RAM,
-				"process": s.processes,
+				"cpu":     s.resources.cpu,
+				"ram":     s.resources.ram,
+				"process": s.resources.processes,
 			}).Info()
 			chosen.Status = _task.Running
 			chosen.Mtime = time.Now()
@@ -125,7 +120,7 @@ func (s *Scheduler) readyToGo() []*_task.Task {
 	defer s.lock.RUnlock()
 	for _, task := range s.tasks {
 		// enough CPU, enough RAM, Start date is okay
-		if task.Start.Before(now) && task.CPU <= s.CPU && task.RAM <= s.RAM && task.Status == _task.Waiting {
+		if task.Start.Before(now) && task.Status == _task.Waiting && s.resources.IsDoable(task.CPU, task.RAM) {
 			tasks = append(tasks, task)
 		}
 	}
