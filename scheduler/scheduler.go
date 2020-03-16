@@ -17,8 +17,6 @@ type Scheduler struct {
 	tasks     map[uuid.UUID]*_task.Task
 	lock      sync.RWMutex
 	events    chan int
-	tasksTodo chan *_task.Task
-	tasksDone chan *_task.Task
 	CPU       int
 	RAM       int
 	processes int
@@ -30,8 +28,6 @@ func New(resources *Resources) *Scheduler {
 		tasks:     make(map[uuid.UUID]*_task.Task),
 		lock:      sync.RWMutex{},
 		events:    make(chan int),
-		tasksTodo: make(chan *_task.Task),
-		tasksDone: make(chan *_task.Task),
 		CPU:       resources.TotalCPU,
 		RAM:       resources.TotalRAM,
 	}
@@ -41,20 +37,12 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	if task.Id != uuid.Nil {
 		return uuid.Nil, errors.New("I am choosing the uuid, not you")
 	}
-	if task.CPU <= 0 {
-		return uuid.Nil, errors.New("CPU must be > 0")
-	}
-	if task.RAM <= 0 {
-		return uuid.Nil, errors.New("RAM must be > 0")
+	err := s.resources.Check(task.CPU, task.RAM)
+	if err != nil {
+		return uuid.Nil, err
 	}
 	if task.MaxExectionTime <= 0 {
 		return uuid.Nil, errors.New("MaxExectionTime must be > 0")
-	}
-	if task.CPU > s.resources.TotalCPU {
-		return uuid.Nil, errors.New("Too much CPU is required")
-	}
-	if task.RAM > s.resources.TotalRAM {
-		return uuid.Nil, errors.New("Too much RAM is required")
 	}
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -66,24 +54,17 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	s.lock.Lock()
 	s.tasks[task.Id] = task
 	s.lock.Unlock()
-	s.tasksTodo <- task
+	task.Cancel = func() {
+		task.Status = _task.Canceled
+	}
+	s.events <- 0
 	return id, nil
 }
 
+// Start is the main loop
 func (s *Scheduler) Start(ctx context.Context) {
 	for {
 		select {
-		case <-s.tasksTodo:
-		case task := <-s.tasksDone:
-			s.lock.Lock()
-			task.Mtime = time.Now()
-			task.Status = _task.Done
-			// FIXME lets garbage collector, later
-			//delete(s.tasks, task.Id)
-			s.CPU += task.CPU
-			s.RAM += task.RAM
-			s.processes--
-			s.lock.Unlock()
 		case <-s.events:
 		}
 		l := log.WithField("tasks", len(s.tasks))
@@ -107,9 +88,8 @@ func (s *Scheduler) Start(ctx context.Context) {
 		} else { // Something todo
 			s.lock.Lock()
 			chosen := todos[0]
-			s.CPU -= chosen.CPU
-			s.RAM -= chosen.RAM
-			s.processes++
+			ctxResources, cancelResources := context.WithCancel(context.TODO())
+			s.resources.Consume(ctxResources, chosen.CPU, chosen.RAM)
 			l.WithFields(log.Fields{
 				"cpu":     s.CPU,
 				"ram":     s.RAM,
@@ -117,19 +97,21 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}).Info()
 			chosen.Status = _task.Running
 			chosen.Mtime = time.Now()
-			var ctx context.Context
-			ctx, chosen.Cancel = context.WithTimeout(
+			ctx, cancel := context.WithTimeout(
 				context.WithValue(context.TODO(), "task", chosen), chosen.MaxExectionTime)
-			if chosen.Cancel == nil {
-				panic("aaaah")
+
+			chosen.Cancel = func() {
+				cancel()
+				cancelResources()
+				chosen.Status = _task.Canceled
+				chosen.Mtime = time.Now()
 			}
 			go func(ctx context.Context, task *_task.Task) {
-				if task.Cancel == nil {
-					panic("oups")
-				}
 				defer task.Cancel()
 				task.Action(ctx)
-				s.tasksDone <- task // a slot is now free, let's try to full it
+				task.Status = _task.Done
+				task.Mtime = time.Now()
+				s.events <- 0 // a slot is now free, let's try to full it
 			}(ctx, chosen)
 			s.lock.Unlock()
 		}

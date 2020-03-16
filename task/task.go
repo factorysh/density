@@ -19,6 +19,7 @@ type Task struct {
 	Cancel          context.CancelFunc
 	Status          Status
 	Mtime           time.Time
+	resourceCancel  context.CancelFunc
 }
 
 // Action does something
