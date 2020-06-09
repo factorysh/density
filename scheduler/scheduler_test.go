@@ -46,7 +46,7 @@ func TestScheduler(t *testing.T) {
 	wait.Add(2)
 	actions := make([]int, 0)
 	for _, task := range []*_task.Task{
-		&_task.Task{
+		{
 			Start:           time.Now(),
 			CPU:             2,
 			RAM:             512,
@@ -59,7 +59,7 @@ func TestScheduler(t *testing.T) {
 				return nil
 			},
 		},
-		&_task.Task{
+		{
 			Start:           time.Now(),
 			CPU:             3,
 			RAM:             1024,
