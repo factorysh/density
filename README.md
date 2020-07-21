@@ -32,7 +32,7 @@ Auth use a JWT token, similar to Hashicorp Vault : https://docs.gitlab.com/ee/ci
 
 `PUT /api/schedule/:schedule`
 
-`POST /api/schedule` owner is implicit, or explicit is admin creates the schedule.
+`POST /api/schedule` owner is implicit, or explicit if admin creates the schedule.
 
 License
 -------
