@@ -9,16 +9,17 @@ import (
 
 // Task something to do
 type Task struct {
-	Start           time.Time
-	MaxWaitTime     time.Duration
-	MaxExectionTime time.Duration
-	CPU             int
-	RAM             int
-	Action          Action
-	Id              uuid.UUID
-	Cancel          context.CancelFunc
-	Status          Status
-	Mtime           time.Time
+	Start           time.Time          // Start time
+	MaxWaitTime     time.Duration      // Max wait time before starting Action
+	MaxExectionTime time.Duration      // Max execution time
+	CPU             int                // CPU quota
+	RAM             int                // RAM quota
+	Action          Action             // Action is an abstract, the thing to do
+	Id              uuid.UUID          // Id
+	Cancel          context.CancelFunc // Cancel the action
+	Status          Status             // Status
+	Mtime           time.Time          // Modified time
+	Owner           string             // Owner
 	resourceCancel  context.CancelFunc
 }
 
