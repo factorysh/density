@@ -2,10 +2,33 @@ package task
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// Tasks is a list of tasks
+type Tasks struct {
+	sync.RWMutex
+	items []Task
+}
+
+// NewTasks inits a list of tasks
+func NewTasks() *Tasks {
+	return &Tasks{
+		items: []Task{},
+	}
+}
+
+// List all tasks in this pool
+func (ts *Tasks) List() []Task {
+	ts.Lock()
+	defer ts.Unlock()
+
+	return ts.items
+
+}
 
 // Task something to do
 type Task struct {
