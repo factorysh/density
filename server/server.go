@@ -36,6 +36,7 @@ func (s *Server) Initialize() {
 func (s *Server) routes() {
 
 	s.Router = mux.NewRouter()
+	s.Router.HandleFunc("/api/schedules/{owner}", api.HandleGetSchedules(s.Tasks)).Methods(http.MethodGet)
 	s.Router.HandleFunc("/api/schedules", api.HandleGetSchedules(s.Tasks)).Methods(http.MethodGet)
 
 }

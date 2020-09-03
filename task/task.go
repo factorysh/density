@@ -30,6 +30,22 @@ func (ts *Tasks) List() []Task {
 
 }
 
+// Filter and return tasks matching list of owners passed as parameters
+func (ts *Tasks) Filter(owners ...string) (t []Task) {
+	ts.Lock()
+	defer ts.Unlock()
+
+	for _, task := range ts.items {
+		for _, owner := range owners {
+			if task.Owner == owner {
+				t = append(t, task)
+			}
+		}
+	}
+
+	return t
+}
+
 // Task something to do
 type Task struct {
 	Start           time.Time          // Start time
