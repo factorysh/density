@@ -31,9 +31,10 @@ func (ts *Tasks) List() []Task {
 }
 
 // Filter and return tasks matching list of owners passed as parameters
-func (ts *Tasks) Filter(owners ...string) (t []Task) {
+func (ts *Tasks) Filter(owners ...string) []Task {
 	ts.Lock()
 	defer ts.Unlock()
+	var t = []Task{}
 
 	for _, task := range ts.items {
 		for _, owner := range owners {
