@@ -9,20 +9,29 @@ import (
 	"syscall"
 
 	api "github.com/factorysh/batch-scheduler/handlers/api"
+	handlers "github.com/factorysh/batch-scheduler/handlers/api"
+	"github.com/factorysh/batch-scheduler/middlewares"
 	"github.com/factorysh/batch-scheduler/task"
 	"github.com/gorilla/mux"
 )
 
 // Server struct containing config
 type Server struct {
-	API    *http.Server
-	Done   chan (os.Signal)
-	Router *mux.Router
-	Tasks  *task.Tasks
+	API     *http.Server
+	Done    chan (os.Signal)
+	Router  *mux.Router
+	Tasks   *task.Tasks
+	AuthKey string
 }
 
 // Initialize server instance
 func (s *Server) Initialize() {
+
+	var found bool
+
+	if s.AuthKey, found = os.LookupEnv("AUTH_KEY"); !found {
+		log.Fatal("Server can't start without an authentication key (`AUTH_KEY` env variable)")
+	}
 
 	s.Done = make(chan os.Signal, 1)
 	signal.Notify(s.Done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -36,8 +45,8 @@ func (s *Server) Initialize() {
 func (s *Server) routes() {
 
 	s.Router = mux.NewRouter()
-	s.Router.HandleFunc("/api/schedules/{owner}", api.HandleGetSchedules(s.Tasks)).Methods(http.MethodGet)
-	s.Router.HandleFunc("/api/schedules", api.HandleGetSchedules(s.Tasks)).Methods(http.MethodGet)
+	s.Router.HandleFunc("/api/schedules/{owner}", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Tasks))).Methods(http.MethodGet)
+	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, api.HandleGetSchedules(s.Tasks))).Methods(http.MethodGet)
 
 }
 
