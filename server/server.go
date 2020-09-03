@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	api "github.com/factorysh/batch-scheduler/handlers/api"
 	handlers "github.com/factorysh/batch-scheduler/handlers/api"
 	"github.com/factorysh/batch-scheduler/middlewares"
 	"github.com/factorysh/batch-scheduler/task"
@@ -46,7 +45,7 @@ func (s *Server) routes() {
 
 	s.Router = mux.NewRouter()
 	s.Router.HandleFunc("/api/schedules/{owner}", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Tasks))).Methods(http.MethodGet)
-	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, api.HandleGetSchedules(s.Tasks))).Methods(http.MethodGet)
+	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Tasks))).Methods(http.MethodGet)
 
 }
 
