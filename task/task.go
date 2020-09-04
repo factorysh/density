@@ -60,6 +60,9 @@ type Task struct {
 	Status          Status             // Status
 	Mtime           time.Time          // Modified time
 	Owner           string             // Owner
+	Retry           int                // Number of retry before crash
+	Every           time.Duration      // Periodic execution. Exclusive with Cron
+	Cron            string             // Cron definition. Exclusive with Every
 	resourceCancel  context.CancelFunc
 }
 
