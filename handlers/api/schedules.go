@@ -26,6 +26,7 @@ func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
+			return
 		}
 
 		w.WriteHeader(http.StatusOK)
