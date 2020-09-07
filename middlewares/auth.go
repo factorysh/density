@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/factorysh/batch-scheduler/owner"
 )
 
 // Auth will ensure JWT token is valid
@@ -38,7 +39,21 @@ func Auth(key string, next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		claims, ok := t.Claims.(jwt.MapClaims)
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		u, err := owner.FromJWT(claims)
+		if err != nil {
+			fmt.Println(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		ctx := u.ToCtx(r.Context())
+
+		next.ServeHTTP(w, r.WithContext(ctx))
 
 	}
 }
