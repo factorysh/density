@@ -30,6 +30,14 @@ func (ts *Tasks) List() []Task {
 
 }
 
+// Add adds new task to list of tasks
+func (ts *Tasks) Add(t Task) {
+	ts.Lock()
+	defer ts.Unlock()
+
+	ts.items = append(ts.items, t)
+}
+
 // Filter and return tasks matching list of owners passed as parameters
 func (ts *Tasks) Filter(owners ...string) []Task {
 	ts.Lock()
@@ -54,9 +62,9 @@ type Task struct {
 	MaxExectionTime time.Duration      // Max execution time
 	CPU             int                // CPU quota
 	RAM             int                // RAM quota
-	Action          Action             // Action is an abstract, the thing to do
+	Action          Action             `json:"-"` // Action is an abstract, the thing to do
 	Id              uuid.UUID          // Id
-	Cancel          context.CancelFunc // Cancel the action
+	Cancel          context.CancelFunc `json:"-"` // Cancel the action
 	Status          Status             // Status
 	Mtime           time.Time          // Modified time
 	Owner           string             // Owner

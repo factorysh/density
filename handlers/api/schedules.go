@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/factorysh/batch-scheduler/owner"
 	"github.com/factorysh/batch-scheduler/task"
 	"github.com/gorilla/mux"
 )
@@ -30,6 +31,37 @@ func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
+		w.Write(json)
+
+	}
+
+}
+
+// HandlePostSchedules handles a post on /schedules endpoint
+func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		u, err := owner.FromCtx(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		t := task.Task{
+			Owner: u.Name,
+		}
+		tasks.Add(t)
+
+		json, err := json.Marshal(&t)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
 		w.Write(json)
 
 	}
