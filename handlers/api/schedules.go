@@ -83,14 +83,10 @@ func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
 		// if user is admin and request for an explicit task creation
 		if u.Admin && explicit {
 			// use parameter as owner
-			t = task.Task{
-				Owner: o,
-			}
+			t = task.NewTask(o)
 		} else {
 			// else, just use the user passed in the context
-			t = task.Task{
-				Owner: u.Name,
-			}
+			t = task.NewTask(u.Name)
 		}
 
 		// add tasks to current tasks

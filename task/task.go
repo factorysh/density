@@ -74,6 +74,14 @@ type Task struct {
 	resourceCancel  context.CancelFunc
 }
 
+// NewTask init a new task
+func NewTask(o string) Task {
+	return Task{
+		Owner: o,
+		Id:    uuid.New(),
+	}
+}
+
 // Action does something
 type Action func(context.Context) error
 
