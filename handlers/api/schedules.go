@@ -63,6 +63,9 @@ func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		var t task.Task
+		vars := mux.Vars(r)
+		o, explicit := vars["owner"]
 
 		u, err := owner.FromCtx(r.Context())
 		if err != nil {
@@ -71,9 +74,26 @@ func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
 			return
 		}
 
-		t := task.Task{
-			Owner: u.Name,
+		// unpriviledged user can't create explicit job
+		if !u.Admin && explicit {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
 		}
+
+		// if user is admin and request for an explicit task creation
+		if u.Admin && explicit {
+			// use parameter as owner
+			t = task.Task{
+				Owner: o,
+			}
+		} else {
+			// else, just use the user passed in the context
+			t = task.Task{
+				Owner: u.Name,
+			}
+		}
+
+		// add tasks to current tasks
 		tasks.Add(t)
 
 		json, err := json.Marshal(&t)
