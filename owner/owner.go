@@ -24,6 +24,7 @@ func (u *Owner) ToCtx(in context.Context) context.Context {
 
 // FromJWT creates a user if one is found in JWT claims
 func FromJWT(claims map[string]interface{}) (*Owner, error) {
+	var isAdmin bool
 
 	val, ok := claims["owner"]
 	if !ok {
@@ -35,8 +36,17 @@ func FromJWT(claims map[string]interface{}) (*Owner, error) {
 		return nil, errors.New("JWT owner claim is not a string")
 	}
 
+	val, ok = claims["admin"]
+	if ok {
+		isAdmin, ok = val.(bool)
+		if !ok {
+			return nil, errors.New("JWT admin value not valid")
+		}
+	}
+
 	return &Owner{
-		Name: name,
+		Name:  name,
+		Admin: isAdmin,
 	}, nil
 
 }
