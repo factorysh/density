@@ -31,7 +31,7 @@ func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 			return
 		}
 
-		// if user if an admin
+		// if user is an admin
 		if u.Admin {
 			if filter {
 				//  request with a filter
