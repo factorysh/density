@@ -15,7 +15,7 @@ func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var ts []task.Task
 		vars := mux.Vars(r)
-		o, filter := vars["owner"]
+		o, filter := vars[owner.OWNER]
 
 		// get user from context
 		u, err := owner.FromCtx(r.Context())
@@ -65,7 +65,7 @@ func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var t task.Task
 		vars := mux.Vars(r)
-		o, explicit := vars["owner"]
+		o, explicit := vars[owner.OWNER]
 
 		u, err := owner.FromCtx(r.Context())
 		if err != nil {

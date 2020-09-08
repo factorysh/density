@@ -11,6 +11,12 @@ var (
 	userKey = contextKey("owner")
 )
 
+// OWNER identifier in map
+const OWNER = "owner"
+
+// ADMIN identifier in map
+const ADMIN = "admin"
+
 // Owner represents an authenticated user info
 type Owner struct {
 	Name  string
@@ -26,7 +32,7 @@ func (u *Owner) ToCtx(in context.Context) context.Context {
 func FromJWT(claims map[string]interface{}) (*Owner, error) {
 	var isAdmin bool
 
-	val, ok := claims["owner"]
+	val, ok := claims[OWNER]
 	if !ok {
 		return nil, errors.New("Missing owner in JWT claims")
 	}
@@ -36,7 +42,7 @@ func FromJWT(claims map[string]interface{}) (*Owner, error) {
 		return nil, errors.New("JWT owner claim is not a string")
 	}
 
-	val, ok = claims["admin"]
+	val, ok = claims[ADMIN]
 	if ok {
 		isAdmin, ok = val.(bool)
 		if !ok {
