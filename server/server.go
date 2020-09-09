@@ -48,6 +48,7 @@ func (s *Server) routes() {
 	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Tasks))).Methods(http.MethodGet)
 	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, handlers.HandlePostSchedules(s.Tasks))).Methods(http.MethodPost)
 	s.Router.HandleFunc("/api/schedules/{owner}", middlewares.Auth(s.AuthKey, handlers.HandlePostSchedules(s.Tasks))).Methods(http.MethodPost)
+	s.Router.HandleFunc("/api/schedules/{job}", middlewares.Auth(s.AuthKey, handlers.HandleDeleteSchedules(s.Tasks))).Methods(http.MethodDelete)
 
 }
 

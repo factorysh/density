@@ -38,6 +38,20 @@ func (ts *Tasks) Add(t Task) {
 	ts.items = append(ts.items, t)
 }
 
+// Kill cancel and supress a tasks in the list
+func (ts *Tasks) Kill(i int) error {
+	ts.Lock()
+	defer ts.Unlock()
+
+	// TODO: leaved here as a reminder
+	// ts.items[i].Cancel()
+
+	// reslice to remove item from list
+	ts.items = append(ts.items[:i], ts.items[i+1:]...)
+
+	return nil
+}
+
 // Filter and return tasks matching list of owners passed as parameters
 func (ts *Tasks) Filter(owners ...string) []Task {
 	ts.Lock()

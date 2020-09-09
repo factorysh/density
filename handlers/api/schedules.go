@@ -9,6 +9,9 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// JOB is used as key in map of http vars
+const JOB = "job"
+
 // HandleGetSchedules handles a get on /schedules endpoint
 func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 
@@ -101,6 +104,42 @@ func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusCreated)
 		w.Write(json)
+
+	}
+
+}
+
+// HandleDeleteSchedules handle a delete on schedules
+func HandleDeleteSchedules(tasks *task.Tasks) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var index int
+		var found bool
+
+		vars := mux.Vars(r)
+		j, _ := vars[JOB]
+
+		for i, cur := range tasks.List() {
+			if cur.Id.String() == j {
+				found = true
+				index = i
+				break
+			}
+		}
+
+		if !found {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		err := tasks.Kill(index)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 
 	}
 
