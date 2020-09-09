@@ -1,15 +1,34 @@
 package action
 
-import "context"
+import (
+	"fmt"
 
-// Compose is a docker-compose project
+	cs "github.com/compose-spec/compose-go/loader"
+)
+
+// Compose represent a struct containing a raw docker-compose.yml file
 type Compose struct {
-	path    string
-	service string
-	env     map[string]string
+	Raw     string
+	Compose map[string]interface{}
 }
 
-// Action run the project
-func (c *Compose) Action(ctx context.Context) error {
+// NewCompose inits a new compose file struct
+func NewCompose(input []byte) Compose {
+	return Compose{
+		Raw: string(input),
+	}
+
+}
+
+// Parse ensures a docker-compose file, ensure content is valid
+func (c Compose) Parse() error {
+
+	parsed, err := cs.ParseYAML([]byte(c.Raw))
+	if err != nil {
+		return fmt.Errorf(fmt.Sprintf("Error when validating compose file: %v", err))
+	}
+
+	c.Compose = parsed
+
 	return nil
 }
