@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	cs "github.com/compose-spec/compose-go/loader"
+	"gopkg.in/yaml.v2"
 )
 
 // Compose represent a struct containing a raw docker-compose.yml file
@@ -31,4 +32,16 @@ func (c *Compose) Parse() error {
 	c.Parsed = parsed
 
 	return nil
+}
+
+// Recompose rewrite the file back
+func (c *Compose) Recompose() (string, error) {
+
+	ret, err := yaml.Marshal(&c.Parsed)
+	if err != nil {
+		return "", err
+	}
+
+	return string(ret), nil
+
 }

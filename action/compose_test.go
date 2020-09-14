@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCompose(t *testing.T) {
+func TestParseCompose(t *testing.T) {
 	tests := map[string]struct {
 		input      string
 		shouldFail bool
@@ -32,4 +32,28 @@ func TestCompose(t *testing.T) {
 
 		})
 	}
+}
+
+func TestRecompose(t *testing.T) {
+
+	expected := `services:
+  hello:
+    command: echo world
+    image: busybox:latest
+version: "3"
+`
+
+	input, err := ioutil.ReadFile("../compose-samples/valid-echo.yml")
+	assert.NoError(t, err)
+
+	c := NewCompose(input)
+
+	err = c.Parse()
+	assert.NoError(t, err)
+
+	output, err := c.Recompose()
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected, output)
+
 }
