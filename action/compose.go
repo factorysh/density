@@ -8,8 +8,8 @@ import (
 
 // Compose represent a struct containing a raw docker-compose.yml file
 type Compose struct {
-	Raw     string
-	Compose map[string]interface{}
+	Raw    string
+	Parsed map[string]interface{}
 }
 
 // NewCompose inits a new compose file struct
@@ -21,14 +21,14 @@ func NewCompose(input []byte) Compose {
 }
 
 // Parse ensures a docker-compose file, ensure content is valid
-func (c Compose) Parse() error {
+func (c *Compose) Parse() error {
 
 	parsed, err := cs.ParseYAML([]byte(c.Raw))
 	if err != nil {
 		return fmt.Errorf(fmt.Sprintf("Error when validating compose file: %v", err))
 	}
 
-	c.Compose = parsed
+	c.Parsed = parsed
 
 	return nil
 }
