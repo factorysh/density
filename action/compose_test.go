@@ -34,6 +34,24 @@ func TestParseCompose(t *testing.T) {
 	}
 }
 
+func NewValidCompose() (*Compose, error) {
+
+	input, err := ioutil.ReadFile("../compose-samples/valid-echo.yml")
+	if err != nil {
+		return nil, err
+	}
+
+	c := NewCompose(input)
+
+	err = c.Parse()
+	if err != nil {
+		return nil, err
+	}
+
+	return &c, nil
+
+}
+
 func TestRecompose(t *testing.T) {
 
 	expected := `services:
@@ -43,10 +61,17 @@ func TestRecompose(t *testing.T) {
 version: "3"
 `
 
-	input, err := ioutil.ReadFile("../compose-samples/valid-echo.yml")
+	c, err := NewValidCompose()
+	assert.NoError(t, err)
+	assert.NotNil(t, c)
+
+	output, err := c.Recompose()
 	assert.NoError(t, err)
 
-	c := NewCompose(input)
+	assert.Equal(t, expected, output)
+
+}
+
 
 	err = c.Parse()
 	assert.NoError(t, err)
