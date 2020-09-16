@@ -72,13 +72,34 @@ version: "3"
 
 }
 
+func TestEnsureBin(t *testing.T) {
+	tests := map[string]struct {
+		input      string
+		shouldFail bool
+	}{
+		"valid":   {input: "docker-compose", shouldFail: false},
+		"invalid": {input: "dckr-cmps", shouldFail: true},
+	}
 
-	err = c.Parse()
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := ensureBin(tc.input)
+			if tc.shouldFail {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+		})
+	}
+
+}
+
+func TestRun(t *testing.T) {
+	c, err := NewValidCompose()
 	assert.NoError(t, err)
 
-	output, err := c.Recompose()
+	err = c.Run("uuid")
 	assert.NoError(t, err)
-
-	assert.Equal(t, expected, output)
 
 }
