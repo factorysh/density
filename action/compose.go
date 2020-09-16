@@ -1,17 +1,13 @@
 package action
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-	"regexp"
-	"strings"
 
 	cs "github.com/compose-spec/compose-go/loader"
-	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -57,11 +53,6 @@ func (c *Compose) Recompose() (string, error) {
 // Run this compose instance
 func (c Compose) Run(uuid string) error {
 
-	// ensure binary is present
-	if err := ensureBin("docker-compose"); err != nil {
-		return err
-	}
-
 	// TODO: runs dir comes from env
 	rundir := fmt.Sprintf("/tmp/runs/%s", uuid)
 
@@ -104,25 +95,4 @@ func (c Compose) Run(uuid string) error {
 	}
 
 	return nil
-}
-
-func ensureBin(name string) error {
-	var out bytes.Buffer
-
-	cmd := exec.Command("whereis", "-b", name)
-	cmd.Stdout = &out
-
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	sanitized := strings.TrimRight(out.String(), "\n")
-	matched, err := regexp.Match(fmt.Sprintf("%s: .*/%s", name, name), []byte(sanitized))
-	if !matched {
-		return errors.Errorf("Executable %s not found", name)
-	}
-
-	return nil
-
 }
