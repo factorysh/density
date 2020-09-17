@@ -52,17 +52,19 @@ func (c *Compose) Recompose() (string, error) {
 
 // Run this compose instance
 func (c Compose) Run(uuid string) error {
+	var basedir string
 
-	// TODO: runs dir comes from env
-	rundir := fmt.Sprintf("/tmp/runs/%s", uuid)
+	if dir, ok := os.LookupEnv("BASE_RUN_DIR"); ok {
+		basedir = dir
+	} else {
+		basedir = "/tmp/runs"
+	}
 
-	// create run per uuid dir if not exists
-	if _, err := os.Stat(rundir); os.IsNotExist(err) {
-		err := os.Mkdir(rundir, 755)
-		if err != nil {
-			return err
+	rundir := fmt.Sprintf("%s/%s", basedir, uuid)
 
-		}
+	err := ensureRunDirs(basedir, rundir)
+	if err != nil {
+		return err
 	}
 
 	// create temp file
@@ -95,4 +97,28 @@ func (c Compose) Run(uuid string) error {
 	}
 
 	return nil
+}
+
+// ensureRunDirs creates needed directories before a run starts
+func ensureRunDirs(basedir, rundir string) error {
+
+	// create base dir
+	if _, err := os.Stat(basedir); os.IsNotExist(err) {
+		err := os.Mkdir(basedir, 755)
+		if err != nil {
+			return err
+
+		}
+	}
+
+	// create run per uuid dir if not exists
+	if _, err := os.Stat(rundir); os.IsNotExist(err) {
+		err := os.Mkdir(rundir, 755)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
 }
