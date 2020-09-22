@@ -3,72 +3,10 @@ package task
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-// Tasks is a list of tasks
-type Tasks struct {
-	sync.RWMutex
-	items []Task
-}
-
-// NewTasks inits a list of tasks
-func NewTasks() *Tasks {
-	return &Tasks{
-		items: []Task{},
-	}
-}
-
-// List all tasks in this pool
-func (ts *Tasks) List() []Task {
-	ts.Lock()
-	defer ts.Unlock()
-
-	return ts.items
-
-}
-
-// Add adds new task to list of tasks
-func (ts *Tasks) Add(t Task) {
-	ts.Lock()
-	defer ts.Unlock()
-
-	ts.items = append(ts.items, t)
-}
-
-// Kill cancel and supress a tasks in the list
-func (ts *Tasks) Kill(i int) error {
-	ts.Lock()
-	defer ts.Unlock()
-
-	// TODO: leaved here as a reminder
-	// ts.items[i].Cancel()
-
-	// reslice to remove item from list
-	ts.items = append(ts.items[:i], ts.items[i+1:]...)
-
-	return nil
-}
-
-// Filter and return tasks matching list of owners passed as parameters
-func (ts *Tasks) Filter(owners ...string) []Task {
-	ts.Lock()
-	defer ts.Unlock()
-	var t = []Task{}
-
-	for _, task := range ts.items {
-		for _, owner := range owners {
-			if task.Owner == owner {
-				t = append(t, task)
-			}
-		}
-	}
-
-	return t
-}
 
 // Task something to do
 type Task struct {

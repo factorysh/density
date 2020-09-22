@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/factorysh/batch-scheduler/owner"
+	"github.com/factorysh/batch-scheduler/scheduler"
 	"github.com/factorysh/batch-scheduler/task"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -13,10 +16,10 @@ import (
 const JOB = "job"
 
 // HandleGetSchedules handles a get on /schedules endpoint
-func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
+func HandleGetSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		var ts []task.Task
+		var ts []*task.Task
 		vars := mux.Vars(r)
 		o, filter := vars[owner.OWNER]
 
@@ -38,14 +41,14 @@ func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 		if u.Admin {
 			if filter {
 				//  request with a filter
-				ts = tasks.Filter(o)
+				ts = schd.Filter(o)
 			} else {
 				// request all
-				ts = tasks.List()
+				ts = schd.List()
 			}
 		} else {
 			// used context information to get current user name
-			ts = tasks.Filter(u.Name)
+			ts = schd.Filter(u.Name)
 		}
 
 		json, err := json.Marshal(&ts)
@@ -63,7 +66,7 @@ func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 }
 
 // HandlePostSchedules handles a post on /schedules endpoint
-func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
+func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var t task.Task
@@ -93,7 +96,14 @@ func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
 		}
 
 		// add tasks to current tasks
-		tasks.Add(t)
+		_, err = schd.Add(&t)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		fmt.Println(schd.List())
 
 		json, err := json.Marshal(&t)
 		if err != nil {
@@ -110,29 +120,14 @@ func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
 }
 
 // HandleDeleteSchedules handle a delete on schedules
-func HandleDeleteSchedules(tasks *task.Tasks) http.HandlerFunc {
+func HandleDeleteSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		var index int
-		var found bool
-
 		vars := mux.Vars(r)
 		j, _ := vars[JOB]
 
-		for i, cur := range tasks.List() {
-			if cur.Id.String() == j {
-				found = true
-				index = i
-				break
-			}
-		}
-
-		if !found {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		err := tasks.Kill(index)
+		uuid, err := uuid.Parse(j)
+		err = schd.Cancel(uuid)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))

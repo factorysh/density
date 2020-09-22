@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,17 +11,17 @@ import (
 
 	handlers "github.com/factorysh/batch-scheduler/handlers/api"
 	"github.com/factorysh/batch-scheduler/middlewares"
-	"github.com/factorysh/batch-scheduler/task"
+	"github.com/factorysh/batch-scheduler/scheduler"
 	"github.com/gorilla/mux"
 )
 
 // Server struct containing config
 type Server struct {
-	API     *http.Server
-	Done    chan (os.Signal)
-	Router  *mux.Router
-	Tasks   *task.Tasks
-	AuthKey string
+	API       *http.Server
+	Done      chan (os.Signal)
+	Router    *mux.Router
+	Scheduler *scheduler.Scheduler
+	AuthKey   string
 }
 
 // Initialize server instance
@@ -35,7 +36,11 @@ func (s *Server) Initialize() {
 	s.Done = make(chan os.Signal, 1)
 	signal.Notify(s.Done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	s.Tasks = task.NewTasks()
+	// TODO: dynamic ressource parameters (env, file, whatever)
+	s.Scheduler = scheduler.New(scheduler.NewResources(2, 512*16))
+
+	// TODO: handle context
+	go s.Scheduler.Start(context.Background())
 
 	s.routes()
 
@@ -44,11 +49,11 @@ func (s *Server) Initialize() {
 func (s *Server) routes() {
 
 	s.Router = mux.NewRouter()
-	s.Router.HandleFunc("/api/schedules/{owner}", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Tasks))).Methods(http.MethodGet)
-	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Tasks))).Methods(http.MethodGet)
-	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, handlers.HandlePostSchedules(s.Tasks))).Methods(http.MethodPost)
-	s.Router.HandleFunc("/api/schedules/{owner}", middlewares.Auth(s.AuthKey, handlers.HandlePostSchedules(s.Tasks))).Methods(http.MethodPost)
-	s.Router.HandleFunc("/api/schedules/{job}", middlewares.Auth(s.AuthKey, handlers.HandleDeleteSchedules(s.Tasks))).Methods(http.MethodDelete)
+	s.Router.HandleFunc("/api/schedules/{owner}", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Scheduler))).Methods(http.MethodGet)
+	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Scheduler))).Methods(http.MethodGet)
+	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, handlers.HandlePostSchedules(s.Scheduler))).Methods(http.MethodPost)
+	s.Router.HandleFunc("/api/schedules/{owner}", middlewares.Auth(s.AuthKey, handlers.HandlePostSchedules(s.Scheduler))).Methods(http.MethodPost)
+	s.Router.HandleFunc("/api/schedules/{job}", middlewares.Auth(s.AuthKey, handlers.HandleDeleteSchedules(s.Scheduler))).Methods(http.MethodDelete)
 
 }
 
