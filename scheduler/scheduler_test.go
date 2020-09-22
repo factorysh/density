@@ -23,6 +23,7 @@ func TestScheduler(t *testing.T) {
 	wait := sync.WaitGroup{}
 	wait.Add(1)
 	task := &_task.Task{
+		Owner:           "test",
 		Start:           time.Now(),
 		MaxExectionTime: 30 * time.Second,
 		Action: func(context.Context) error {
@@ -37,6 +38,10 @@ func TestScheduler(t *testing.T) {
 	id, err := s.Add(task)
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, id)
+	list := s.List()
+	assert.Equal(t, 1, len(list))
+	filtered := s.Filter("test")
+	assert.Equal(t, 1, len(filtered))
 	fmt.Println("id", id)
 	wait.Wait()
 	assert.Len(t, s.readyToGo(), 0)

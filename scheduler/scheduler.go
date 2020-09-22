@@ -113,6 +113,37 @@ func (s *Scheduler) Start(ctx context.Context) {
 	}
 }
 
+// List all the tasks associated with this scheduler
+func (s *Scheduler) List() []*_task.Task {
+	tasks := []*_task.Task{}
+
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	for _, val := range s.tasks {
+		tasks = append(tasks, val)
+	}
+
+	return tasks
+
+}
+
+// Filter tasks for a specific owner
+func (s *Scheduler) Filter(owner string) []*_task.Task {
+	tasks := []*_task.Task{}
+
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	for _, val := range s.tasks {
+		if val.Owner == owner {
+			tasks = append(tasks, val)
+		}
+	}
+
+	return tasks
+}
+
 func (s *Scheduler) readyToGo() []*_task.Task {
 	now := time.Now()
 	tasks := make(_task.TaskByKarma, 0)
