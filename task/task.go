@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -92,7 +93,14 @@ type Task struct {
 func NewTask(o string) Task {
 	return Task{
 		Owner: o,
-		Id:    uuid.New(),
+		Action: func(ctx context.Context) error {
+			fmt.Println("action")
+			return nil
+		},
+		// TODO: get this from request
+		MaxExectionTime: 10,
+		CPU:             1,
+		RAM:             1,
 	}
 }
 
