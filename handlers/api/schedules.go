@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/factorysh/batch-scheduler/action"
 	"github.com/factorysh/batch-scheduler/owner"
 	"github.com/factorysh/batch-scheduler/scheduler"
 	"github.com/factorysh/batch-scheduler/task"
@@ -69,13 +70,36 @@ func HandleGetSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		var desc action.Description
 		var t task.Task
+
 		vars := mux.Vars(r)
 		o, explicit := vars[owner.OWNER]
 
 		u, err := owner.FromCtx(r.Context())
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		// get job description from body
+		err = json.NewDecoder(r.Body).Decode(&desc)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		a, err := action.NewAction(desc)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		err = a.Validate()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
 		}
@@ -89,10 +113,10 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 		// if user is admin and request for an explicit task creation
 		if u.Admin && explicit {
 			// use parameter as owner
-			t = task.NewTask(o)
+			t = task.NewTask(o, a)
 		} else {
 			// else, just use the user passed in the context
-			t = task.NewTask(u.Name)
+			t = task.NewTask(u.Name, a)
 		}
 
 		// add tasks to current tasks
