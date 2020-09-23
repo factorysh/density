@@ -103,7 +103,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}
 			go func(ctx context.Context, task *_task.Task) {
 				defer task.Cancel()
-				task.Action(ctx)
+				task.Action.Run(ctx)
 				task.Status = _task.Done
 				task.Mtime = time.Now()
 				s.events <- new(interface{}) // a slot is now free, let's try to full it
