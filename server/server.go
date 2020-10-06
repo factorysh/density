@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/factorysh/batch-scheduler/config"
 	handlers "github.com/factorysh/batch-scheduler/handlers/api"
 	"github.com/factorysh/batch-scheduler/middlewares"
 	"github.com/factorysh/batch-scheduler/scheduler"
@@ -31,6 +32,11 @@ func (s *Server) Initialize() {
 
 	if s.AuthKey, found = os.LookupEnv("AUTH_KEY"); !found {
 		log.Fatal("Server can't start without an authentication key (`AUTH_KEY` env variable)")
+	}
+
+	err := config.EnsureDirs()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	s.Done = make(chan os.Signal, 1)
