@@ -44,7 +44,7 @@ func NewTask(o string, a Action) Task {
 
 // Action interface describe behavior of a job
 type Action interface {
-	Validate() error
+	Validate() (string, error)
 	Run(ctx context.Context) error
 }
 
@@ -61,8 +61,8 @@ type DummyAction struct {
 }
 
 // Validate action interface implementation
-func (da *DummyAction) Validate() error {
-	return nil
+func (da *DummyAction) Validate() (string, error) {
+	return "", nil
 }
 
 // Run action interface implementation

@@ -97,7 +97,7 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 			return
 		}
 
-		err = a.Validate()
+		_, err = a.Validate()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
