@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 
+	"github.com/factorysh/batch-scheduler/config"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
@@ -34,8 +37,33 @@ func NewCompose(desc Description) (*Compose, error) {
 }
 
 // Validate compose content
-func (c *Compose) Validate() error {
-	return nil
+func (c *Compose) Validate() (string, error) {
+	b := config.GetDataDir()
+	file, err := ioutil.TempFile(fmt.Sprintf("%s/%s", b, "validator"), "")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(file.Name())
+
+	_, err = file.Write([]byte(c.raw))
+	if err != nil {
+		return "", err
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	cmd := exec.Command("docker-compose", "-f", file.Name(), "config", "-q")
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	if err != nil {
+		return stderr.String(), err
+	}
+
+	return "", err
+
 }
 
 // Run compose action
