@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"testing"
 
 	"github.com/factorysh/batch-scheduler/config"
@@ -57,6 +58,32 @@ func TestValidateCompose(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.message, message)
+		})
+	}
+}
+
+func TestRunCompose(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "Run valid compose file",
+			input: validCompose,
+		},
+	}
+
+	err := config.EnsureDirs()
+	assert.NoError(t, err)
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := NewCompose(Description{DockerCompose: tc.input})
+			assert.NoError(t, err)
+
+			ctx := context.WithValue(context.Background(), contextUUID, "test")
+			err = c.Run(ctx)
+			assert.NoError(t, err)
 		})
 	}
 }
