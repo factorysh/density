@@ -22,7 +22,7 @@ services:
     command: "echo world"
 `
 
-func TestCompose(t *testing.T) {
+func TestValidateCompose(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
