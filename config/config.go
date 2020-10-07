@@ -22,7 +22,7 @@ func GetDataDir() string {
 func EnsureDirs() error {
 
 	b := GetDataDir()
-	subs := [1]string{"validator"}
+	subs := [2]string{"validator", "wd"}
 
 	for _, sub := range subs {
 		err := os.MkdirAll(fmt.Sprintf("%s/%s", b, sub), 0755)
