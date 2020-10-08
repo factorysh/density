@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"regexp"
-	"strings"
 
 	"github.com/factorysh/batch-scheduler/config"
 	"github.com/pkg/errors"
@@ -129,24 +127,16 @@ func EnsureBin() error {
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("whereis", "-b", name)
+	cmd := exec.Command("which", name)
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 	if err != nil {
 		print(stderr.String())
-		return err
+		return fmt.Errorf("%s not found: %s", name, err.Error())
 	}
-
-	sanitized := strings.TrimRight(out.String(), "\n")
-	matched, err := regexp.Match(fmt.Sprintf("%s: .*/%s", name, name), []byte(sanitized))
-	if !matched {
-		return errors.Errorf("Executable %s not found", name)
-	}
-
 	return nil
-
 }
 
 // ensureCtxDir ensures a working directory, per uuid
