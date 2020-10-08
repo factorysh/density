@@ -81,7 +81,7 @@ func TestRunCompose(t *testing.T) {
 			c, err := NewCompose([]byte(tc.input))
 			assert.NoError(t, err)
 
-			ctx := context.WithValue(context.Background(), ContextUUID, "test")
+			ctx := context.WithValue(context.Background(), contextUUID, "test")
 			err = c.Run(ctx)
 			assert.NoError(t, err)
 		})

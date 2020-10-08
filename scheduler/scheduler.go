@@ -95,7 +95,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			chosen.Mtime = time.Now()
 			ctx, cancel := context.WithTimeout(
 				context.WithValue(context.TODO(), "task", chosen), chosen.MaxExectionTime)
-			ctx = context.WithValue(ctx, action.ContextUUID, chosen.Id.String())
+			ctx = action.AddUUIDtoCtx(ctx, chosen.Id.String())
 
 			chosen.Cancel = func() {
 				cancel()
