@@ -20,12 +20,13 @@ const (
 type contextKey string
 
 var (
-	contextUUID = contextKey("uuid")
+	// ContextUUID is used to put a uuid value in a context
+	ContextUUID = contextKey("uuid")
 )
 
 // FromCtxUUID fetch an uuid from a context value
 func FromCtxUUID(ctx context.Context) (string, bool) {
-	v, ok := ctx.Value(contextUUID).(string)
+	v, ok := ctx.Value(ContextUUID).(string)
 	return v, ok
 }
 
