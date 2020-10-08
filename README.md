@@ -34,6 +34,18 @@ Auth use a JWT token, similar to Hashicorp Vault : https://docs.gitlab.com/ee/ci
 
 `POST /api/schedule` owner is implicit, or explicit if admin creates the schedule.
 
+#### Compose hacked format
+
+```yaml
+x-batch:
+    start:
+    max_wait_time:
+    max_execution_time:
+    retry:
+    every:
+    cron:
+```
+
 License
 -------
 
