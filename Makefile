@@ -1,13 +1,13 @@
 .PHONY: build test generate
 
+build: bin
+	go build -o bin/batch-scheduler cmd/batch-scheduler.go
+
 bin:
 	mkdir -p bin
 
 run:
 	./bin/batch-scheduler
-
-build: bin
-	go build -o bin/batch-scheduler cmd/batch-scheduler.go
 
 test:
 	go test -cover -timeout 30s \
@@ -17,3 +17,6 @@ test:
 
 generate:
 	go generate ./task
+
+clean:
+	rm -rf bin
