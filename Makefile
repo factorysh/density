@@ -1,5 +1,7 @@
 .PHONY: build test generate
 
+default: build
+
 build: bin
 	go build -o bin/batch-scheduler cmd/batch-scheduler.go
 
