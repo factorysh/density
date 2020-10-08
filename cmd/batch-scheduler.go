@@ -13,7 +13,7 @@ func main() {
 
 	err := action.EnsureBin()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("ensure bin:", err)
 	}
 
 	var s server.Server
