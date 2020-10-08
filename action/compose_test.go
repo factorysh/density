@@ -47,7 +47,7 @@ func TestValidateCompose(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			c, err := NewCompose(Description{DockerCompose: tc.input})
+			c, err := NewCompose([]byte(tc.input))
 			assert.NoError(t, err)
 
 			message, err := c.Validate()
@@ -78,7 +78,7 @@ func TestRunCompose(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			c, err := NewCompose(Description{DockerCompose: tc.input})
+			c, err := NewCompose([]byte(tc.input))
 			assert.NoError(t, err)
 
 			ctx := context.WithValue(context.Background(), contextUUID, "test")

@@ -9,11 +9,13 @@ import (
 
 // Actions implement task.Action interface
 
-// Description wraps all fields a used to parse a job description
-type Description struct {
-	// DockerCompose field for a docker-compose yaml file as string
-	DockerCompose string `json:"docker-compose"`
-}
+// Kind represents all kinds of supported actions
+type Kind int
+
+const (
+	// DockerCompose kind
+	DockerCompose Kind = iota
+)
 
 type contextKey string
 
@@ -28,16 +30,17 @@ func FromCtxUUID(ctx context.Context) (string, bool) {
 }
 
 // NewAction creates a specific job from a job description
-func NewAction(desc Description) (task.Action, error) {
+func NewAction(k Kind, desc []byte) (task.Action, error) {
 
-	if desc.DockerCompose != "" {
+	switch k {
+	case DockerCompose:
 		compose, err := NewCompose(desc)
 		if err != nil {
 			return nil, err
 		}
-
 		return compose, err
-	}
 
-	return nil, errors.New("This kind of job is not supported")
+	default:
+		return nil, errors.New("This kind of job is not supported")
+	}
 }

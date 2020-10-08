@@ -22,16 +22,16 @@ type Compose struct {
 }
 
 // NewCompose creates a new compose struct that implements the action.Job interface
-func NewCompose(desc Description) (*Compose, error) {
+func NewCompose(desc []byte) (*Compose, error) {
 	c := make(map[interface{}]interface{})
 
-	err := yaml.Unmarshal([]byte(desc.DockerCompose), c)
+	err := yaml.Unmarshal(desc, c)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Compose{
-		raw:     desc.DockerCompose,
+		raw:     string(desc),
 		content: c,
 	}, err
 }
