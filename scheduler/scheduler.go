@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/factorysh/batch-scheduler/action"
 	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -94,6 +95,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			chosen.Mtime = time.Now()
 			ctx, cancel := context.WithTimeout(
 				context.WithValue(context.TODO(), "task", chosen), chosen.MaxExectionTime)
+			ctx = context.WithValue(ctx, action.ContextUUID, chosen.Id.String())
 
 			chosen.Cancel = func() {
 				cancel()
@@ -103,7 +105,10 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}
 			go func(ctx context.Context, task *_task.Task) {
 				defer task.Cancel()
-				task.Action.Run(ctx)
+				err := task.Action.Run(ctx)
+				if err != nil {
+					l.Error(err)
+				}
 				task.Status = _task.Done
 				task.Mtime = time.Now()
 				s.events <- new(interface{}) // a slot is now free, let's try to full it
