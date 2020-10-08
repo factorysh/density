@@ -127,12 +127,15 @@ func (c *Compose) Action(ctx context.Context) error {
 func EnsureBin() error {
 	var name = "docker-compose"
 	var out bytes.Buffer
+	var stderr bytes.Buffer
 
 	cmd := exec.Command("whereis", "-b", name)
 	cmd.Stdout = &out
+	cmd.Stderr = &stderr
 
 	err := cmd.Run()
 	if err != nil {
+		print(stderr.String())
 		return err
 	}
 
