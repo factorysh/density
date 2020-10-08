@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/factorysh/batch-scheduler/action"
@@ -15,6 +16,9 @@ import (
 
 // JOB is used as key in map of http vars
 const JOB = "job"
+
+// MAXFORMMEM is used to setup max form memory limit
+const MAXFORMMEM = 1024
 
 // HandleGetSchedules handles a get on /schedules endpoint
 func HandleGetSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
@@ -70,7 +74,6 @@ func HandleGetSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		var desc action.Description
 		var t task.Task
 
 		vars := mux.Vars(r)
@@ -83,14 +86,29 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 			return
 		}
 
-		// get job description from body
-		err = json.NewDecoder(r.Body).Decode(&desc)
+		err = r.ParseMultipartForm(1 << 20)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 			return
 		}
 
-		a, err := action.NewAction(desc)
+		file, _, err := r.FormFile("docker-compose")
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("No docker-compose file found"))
+			return
+		}
+		defer file.Close()
+
+		content, err := ioutil.ReadAll(file)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		a, err := action.NewAction(action.DockerCompose, content)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
