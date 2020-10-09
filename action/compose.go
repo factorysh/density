@@ -104,7 +104,7 @@ func (c *Compose) Run(ctx context.Context) error {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("docker-compose", "up")
+	cmd := exec.Command("docker-compose", "up", "--abort-on-container-exit")
 	cmd.Dir = wd
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
