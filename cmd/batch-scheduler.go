@@ -10,6 +10,7 @@ import (
 
 	"github.com/factorysh/batch-scheduler/action"
 	"github.com/factorysh/batch-scheduler/server"
+	"github.com/factorysh/batch-scheduler/version"
 )
 
 func main() {
@@ -26,7 +27,8 @@ func main() {
 			Dsn: dsn,
 			// Enable printing of SDK debug messages.
 			// Useful when getting started or trying to figure something out.
-			Debug: true,
+			Debug:   true,
+			Release: version.Version(),
 		})
 		if err != nil {
 			log.Fatal(err)
@@ -34,6 +36,9 @@ func main() {
 		// Flush buffered events before the program terminates.
 		// Set the timeout to the maximum duration the program can afford to wait.
 		defer sentry.Flush(2 * time.Second)
+		sentry.ConfigureScope(func(scope *sentry.Scope) {
+			scope.SetTag("service", "batch-scheduler")
+		})
 	}
 
 	var s server.Server
