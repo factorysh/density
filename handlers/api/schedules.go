@@ -10,6 +10,7 @@ import (
 	"github.com/factorysh/batch-scheduler/owner"
 	"github.com/factorysh/batch-scheduler/scheduler"
 	"github.com/factorysh/batch-scheduler/task"
+	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
@@ -108,6 +109,12 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 			return
 		}
 
+		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetExtra("docker-compose.yml", content)
+			})
+		}
+
 		a, err := action.NewAction(action.DockerCompose, content)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -135,6 +142,11 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 		} else {
 			// else, just use the user passed in the context
 			t = task.NewTask(u.Name, a)
+		}
+		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetExtra("task", t.Id)
+			})
 		}
 
 		// add tasks to current tasks
