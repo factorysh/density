@@ -59,7 +59,7 @@ func (s *Server) routes() {
 	sentryHandler := sentryhttp.New(sentryhttp.Options{})
 
 	stack := func(f http.HandlerFunc) http.HandlerFunc {
-		return sentryHandler.HandleFunc(middlewares.Auth(s.AuthKey, f))
+		return middlewares.Auth(s.AuthKey, sentryHandler.HandleFunc(f))
 	}
 
 	s.Router = mux.NewRouter()
