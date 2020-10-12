@@ -2,72 +2,14 @@ package task
 
 import (
 	"context"
+	"fmt"
+	"os/exec"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-// Tasks is a list of tasks
-type Tasks struct {
-	sync.RWMutex
-	items []Task
-}
-
-// NewTasks inits a list of tasks
-func NewTasks() *Tasks {
-	return &Tasks{
-		items: []Task{},
-	}
-}
-
-// List all tasks in this pool
-func (ts *Tasks) List() []Task {
-	ts.Lock()
-	defer ts.Unlock()
-
-	return ts.items
-
-}
-
-// Add adds new task to list of tasks
-func (ts *Tasks) Add(t Task) {
-	ts.Lock()
-	defer ts.Unlock()
-
-	ts.items = append(ts.items, t)
-}
-
-// Kill cancel and supress a tasks in the list
-func (ts *Tasks) Kill(i int) error {
-	ts.Lock()
-	defer ts.Unlock()
-
-	// TODO: leaved here as a reminder
-	// ts.items[i].Cancel()
-
-	// reslice to remove item from list
-	ts.items = append(ts.items[:i], ts.items[i+1:]...)
-
-	return nil
-}
-
-// Filter and return tasks matching list of owners passed as parameters
-func (ts *Tasks) Filter(owners ...string) []Task {
-	ts.Lock()
-	defer ts.Unlock()
-	var t = []Task{}
-
-	for _, task := range ts.items {
-		for _, owner := range owners {
-			if task.Owner == owner {
-				t = append(t, task)
-			}
-		}
-	}
-
-	return t
-}
 
 // Task something to do
 type Task struct {
@@ -89,15 +31,76 @@ type Task struct {
 }
 
 // NewTask init a new task
-func NewTask(o string) Task {
+func NewTask(o string, a Action) Task {
 	return Task{
-		Owner: o,
-		Id:    uuid.New(),
+		Owner:  o,
+		Action: a,
+		// TODO: get this from request
+		MaxExectionTime: 10,
+		CPU:             1,
+		RAM:             1,
 	}
 }
 
-// Action does something
-type Action func(context.Context) error
+// Action interface describe behavior of a job
+type Action interface {
+	Validate() (string, error)
+	Run(ctx context.Context) error
+}
+
+// DummyAction is the most basic action, used for tests and illustration purpose
+type DummyAction struct {
+	Name        string
+	Wait        int
+	Wg          *sync.WaitGroup
+	Counter     int64
+	WithTimeout bool
+	Status      string
+	WithCommand bool
+	ExitCode    int
+}
+
+// Validate action interface implementation
+func (da *DummyAction) Validate() (string, error) {
+	return "", nil
+}
+
+// Run action interface implementation
+func (da *DummyAction) Run(ctx context.Context) error {
+	// Print name
+	fmt.Println(da.Name)
+	// Sleep
+	time.Sleep(time.Duration(da.Wait) * time.Millisecond)
+
+	// Add to dedicated counter
+	atomic.AddInt64(&da.Counter, 1)
+
+	// Handle timeout if specified needed
+	if da.WithTimeout {
+		select {
+		case <-time.After(2 * time.Second):
+			fmt.Println("2s")
+			da.Status = "waiting"
+		case <-ctx.Done():
+			fmt.Println("canceled")
+			da.Status = "canceled"
+		}
+	}
+
+	if da.WithCommand {
+		cmd := exec.CommandContext(ctx, "sleep", "5")
+		_ = cmd.Run()
+		da.ExitCode = cmd.ProcessState.ExitCode()
+
+	}
+
+	// Tell to WG that work is done
+	if da.Wg != nil {
+		da.Wg.Done()
+	}
+
+	return nil
+}
 
 type TaskByStart []*Task
 

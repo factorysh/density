@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/factorysh/batch-scheduler/action"
 	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -94,6 +95,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			chosen.Mtime = time.Now()
 			ctx, cancel := context.WithTimeout(
 				context.WithValue(context.TODO(), "task", chosen), chosen.MaxExectionTime)
+			ctx = action.AddUUIDtoCtx(ctx, chosen.Id.String())
 
 			chosen.Cancel = func() {
 				cancel()
@@ -103,7 +105,10 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}
 			go func(ctx context.Context, task *_task.Task) {
 				defer task.Cancel()
-				task.Action(ctx)
+				err := task.Action.Run(ctx)
+				if err != nil {
+					l.Error(err)
+				}
 				task.Status = _task.Done
 				task.Mtime = time.Now()
 				s.events <- new(interface{}) // a slot is now free, let's try to full it
@@ -111,6 +116,37 @@ func (s *Scheduler) Start(ctx context.Context) {
 			s.lock.Unlock()
 		}
 	}
+}
+
+// List all the tasks associated with this scheduler
+func (s *Scheduler) List() []*_task.Task {
+	tasks := []*_task.Task{}
+
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	for _, val := range s.tasks {
+		tasks = append(tasks, val)
+	}
+
+	return tasks
+
+}
+
+// Filter tasks for a specific owner
+func (s *Scheduler) Filter(owner string) []*_task.Task {
+	tasks := []*_task.Task{}
+
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	for _, val := range s.tasks {
+		if val.Owner == owner {
+			tasks = append(tasks, val)
+		}
+	}
+
+	return tasks
 }
 
 func (s *Scheduler) readyToGo() []*_task.Task {

@@ -2,21 +2,29 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 
+	"github.com/factorysh/batch-scheduler/action"
 	"github.com/factorysh/batch-scheduler/owner"
+	"github.com/factorysh/batch-scheduler/scheduler"
 	"github.com/factorysh/batch-scheduler/task"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
 // JOB is used as key in map of http vars
 const JOB = "job"
 
+// MAXFORMMEM is used to setup max form memory limit
+const MAXFORMMEM = 1024
+
 // HandleGetSchedules handles a get on /schedules endpoint
-func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
+func HandleGetSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		var ts []task.Task
+		var ts []*task.Task
 		vars := mux.Vars(r)
 		o, filter := vars[owner.OWNER]
 
@@ -38,14 +46,14 @@ func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 		if u.Admin {
 			if filter {
 				//  request with a filter
-				ts = tasks.Filter(o)
+				ts = schd.Filter(o)
 			} else {
 				// request all
-				ts = tasks.List()
+				ts = schd.List()
 			}
 		} else {
 			// used context information to get current user name
-			ts = tasks.Filter(u.Name)
+			ts = schd.Filter(u.Name)
 		}
 
 		json, err := json.Marshal(&ts)
@@ -63,16 +71,53 @@ func HandleGetSchedules(tasks *task.Tasks) http.HandlerFunc {
 }
 
 // HandlePostSchedules handles a post on /schedules endpoint
-func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
+func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var t task.Task
+
 		vars := mux.Vars(r)
 		o, explicit := vars[owner.OWNER]
 
 		u, err := owner.FromCtx(r.Context())
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		err = r.ParseMultipartForm(1 << 20)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		file, _, err := r.FormFile("docker-compose")
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("No docker-compose file found"))
+			return
+		}
+		defer file.Close()
+
+		content, err := ioutil.ReadAll(file)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		a, err := action.NewAction(action.DockerCompose, content)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		_, err = a.Validate()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
 		}
@@ -86,14 +131,21 @@ func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
 		// if user is admin and request for an explicit task creation
 		if u.Admin && explicit {
 			// use parameter as owner
-			t = task.NewTask(o)
+			t = task.NewTask(o, a)
 		} else {
 			// else, just use the user passed in the context
-			t = task.NewTask(u.Name)
+			t = task.NewTask(u.Name, a)
 		}
 
 		// add tasks to current tasks
-		tasks.Add(t)
+		_, err = schd.Add(&t)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		fmt.Println(schd.List())
 
 		json, err := json.Marshal(&t)
 		if err != nil {
@@ -110,29 +162,14 @@ func HandlePostSchedules(tasks *task.Tasks) http.HandlerFunc {
 }
 
 // HandleDeleteSchedules handle a delete on schedules
-func HandleDeleteSchedules(tasks *task.Tasks) http.HandlerFunc {
+func HandleDeleteSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		var index int
-		var found bool
-
 		vars := mux.Vars(r)
 		j, _ := vars[JOB]
 
-		for i, cur := range tasks.List() {
-			if cur.Id.String() == j {
-				found = true
-				index = i
-				break
-			}
-		}
-
-		if !found {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		err := tasks.Kill(index)
+		uuid, err := uuid.Parse(j)
+		err = schd.Cancel(uuid)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
