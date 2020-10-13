@@ -31,10 +31,9 @@ func TestValidateCompose(t *testing.T) {
 		err     bool
 	}{
 		{
-			name:    "Valid",
-			input:   validCompose,
-			message: "",
-			err:     false},
+			name:  "Valid",
+			input: validCompose,
+			err:   false},
 		{
 			name:    "Invalid",
 			input:   invalidCompose,
@@ -50,14 +49,14 @@ func TestValidateCompose(t *testing.T) {
 			c, err := NewCompose([]byte(tc.input))
 			assert.NoError(t, err)
 
-			message, err := c.Validate()
+			err = c.Validate()
 			if tc.err {
 				assert.Error(t, err)
+				assert.Equal(t, tc.message, err.Error())
 			} else {
 				assert.NoError(t, err)
 			}
 
-			assert.Equal(t, tc.message, message)
 		})
 	}
 }
