@@ -13,6 +13,7 @@ import (
 	handlers "github.com/factorysh/batch-scheduler/handlers/api"
 	"github.com/factorysh/batch-scheduler/middlewares"
 	"github.com/factorysh/batch-scheduler/scheduler"
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/mux"
 )
 
@@ -54,12 +55,19 @@ func (s *Server) Initialize() {
 
 func (s *Server) routes() {
 
+	// Create an instance of sentryhttp
+	sentryHandler := sentryhttp.New(sentryhttp.Options{})
+
+	stack := func(f http.HandlerFunc) http.HandlerFunc {
+		return middlewares.Auth(s.AuthKey, sentryHandler.HandleFunc(f))
+	}
+
 	s.Router = mux.NewRouter()
-	s.Router.HandleFunc("/api/schedules/{owner}", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Scheduler))).Methods(http.MethodGet)
-	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, handlers.HandleGetSchedules(s.Scheduler))).Methods(http.MethodGet)
-	s.Router.HandleFunc("/api/schedules", middlewares.Auth(s.AuthKey, handlers.HandlePostSchedules(s.Scheduler))).Methods(http.MethodPost)
-	s.Router.HandleFunc("/api/schedules/{owner}", middlewares.Auth(s.AuthKey, handlers.HandlePostSchedules(s.Scheduler))).Methods(http.MethodPost)
-	s.Router.HandleFunc("/api/schedules/{job}", middlewares.Auth(s.AuthKey, handlers.HandleDeleteSchedules(s.Scheduler))).Methods(http.MethodDelete)
+	s.Router.HandleFunc("/api/schedules/{owner}", stack(handlers.HandleGetSchedules(s.Scheduler))).Methods(http.MethodGet)
+	s.Router.HandleFunc("/api/schedules", stack(handlers.HandleGetSchedules(s.Scheduler))).Methods(http.MethodGet)
+	s.Router.HandleFunc("/api/schedules", stack(handlers.HandlePostSchedules(s.Scheduler))).Methods(http.MethodPost)
+	s.Router.HandleFunc("/api/schedules/{owner}", stack(handlers.HandlePostSchedules(s.Scheduler))).Methods(http.MethodPost)
+	s.Router.HandleFunc("/api/schedules/{job}", stack(handlers.HandleDeleteSchedules(s.Scheduler))).Methods(http.MethodDelete)
 
 }
 

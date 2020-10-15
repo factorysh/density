@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/factorysh/batch-scheduler/owner"
+	"github.com/getsentry/sentry-go"
 )
 
 // Auth will ensure JWT token is valid
@@ -43,6 +44,11 @@ func Auth(key string, next http.HandlerFunc) http.HandlerFunc {
 		if !ok {
 			w.WriteHeader(http.StatusBadRequest)
 			return
+		}
+		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetExtra("jwt", claims)
+			})
 		}
 
 		u, err := owner.FromJWT(claims)

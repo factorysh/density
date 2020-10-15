@@ -10,6 +10,7 @@ import (
 	"github.com/factorysh/batch-scheduler/owner"
 	"github.com/factorysh/batch-scheduler/scheduler"
 	"github.com/factorysh/batch-scheduler/task"
+	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
@@ -27,6 +28,7 @@ func HandleGetSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 		var ts []*task.Task
 		vars := mux.Vars(r)
 		o, filter := vars[owner.OWNER]
+		hub := sentry.GetHubFromContext(r.Context())
 
 		// get user from context
 		u, err := owner.FromCtx(r.Context())
@@ -58,6 +60,9 @@ func HandleGetSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 		json, err := json.Marshal(&ts)
 		if err != nil {
+			if hub != nil {
+				hub.CaptureException(err)
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -75,6 +80,7 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		var t task.Task
+		hub := sentry.GetHubFromContext(r.Context())
 
 		vars := mux.Vars(r)
 		o, explicit := vars[owner.OWNER]
@@ -103,20 +109,35 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 		content, err := ioutil.ReadAll(file)
 		if err != nil {
+			if hub != nil {
+				hub.CaptureException(err)
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
+		}
+
+		if hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetExtra("docker-compose.yml", content)
+			})
 		}
 
 		a, err := action.NewAction(action.DockerCompose, content)
 		if err != nil {
+			if hub != nil {
+				hub.CaptureException(err)
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
 		}
 
-		_, err = a.Validate()
+		err = a.Validate()
 		if err != nil {
+			if hub != nil {
+				hub.CaptureException(err)
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -136,10 +157,18 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 			// else, just use the user passed in the context
 			t = task.NewTask(u.Name, a)
 		}
+		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetExtra("task", t.Id)
+			})
+		}
 
 		// add tasks to current tasks
 		_, err = schd.Add(&t)
 		if err != nil {
+			if hub != nil {
+				hub.CaptureException(err)
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -149,6 +178,9 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 		json, err := json.Marshal(&t)
 		if err != nil {
+			if hub != nil {
+				hub.CaptureException(err)
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -167,10 +199,14 @@ func HandleDeleteSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		j, _ := vars[JOB]
+		hub := sentry.GetHubFromContext(r.Context())
 
 		uuid, err := uuid.Parse(j)
 		err = schd.Cancel(uuid)
 		if err != nil {
+			if hub != nil {
+				hub.CaptureException(err)
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return

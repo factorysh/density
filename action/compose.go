@@ -35,17 +35,17 @@ func NewCompose(desc []byte) (*Compose, error) {
 }
 
 // Validate compose content
-func (c *Compose) Validate() (string, error) {
+func (c *Compose) Validate() error {
 	b := config.GetDataDir()
 	file, err := ioutil.TempFile(fmt.Sprintf("%s/%s", b, "validator"), "")
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer os.Remove(file.Name())
 
 	_, err = file.Write([]byte(c.raw))
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	var stdout bytes.Buffer
@@ -57,10 +57,10 @@ func (c *Compose) Validate() (string, error) {
 
 	err = cmd.Run()
 	if err != nil {
-		return stderr.String(), err
+		return errors.New(stderr.String())
 	}
 
-	return "", err
+	return err
 
 }
 
