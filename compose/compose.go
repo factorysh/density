@@ -37,9 +37,9 @@ type Compose struct {
 	tmpFile string
 }
 
-// NewCompose creates a new compose struct that implements the action.Job interface
+// FromYAML creates a new compose struct that implements the action.Job interface
 func FromYAML(desc []byte) (*Compose, error) {
-	c := make(map[interface{}]interface{})
+	c := make(map[string]interface{})
 
 	err := yaml.Unmarshal(desc, c)
 	if err != nil {
