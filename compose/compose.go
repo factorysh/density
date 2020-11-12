@@ -86,18 +86,30 @@ func (c *Compose) ToYAML() ([]byte, error) {
 }
 
 // Run compose action
-func (c *Compose) Run(ctx context.Context, workingDirectory string) error {
+func (c *Compose) Run(ctx context.Context, workingDirectory string, environments map[string]string) error {
 	f, err := os.OpenFile(fmt.Sprintf("%s/docker-compose.yml", workingDirectory),
 		os.O_RDWR|os.O_CREATE, 0640)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-
 	err = yaml.NewEncoder(f).Encode(c.content)
 	if err != nil {
 		return err
 	}
+	f.Close()
+
+	f, err = os.OpenFile(fmt.Sprintf("%s/.env", workingDirectory),
+		os.O_RDWR|os.O_CREATE, 0640)
+	if err != nil {
+		return err
+	}
+	for k, v := range environments {
+		_, err = fmt.Fprintf(f, "%s=%s\n", k, v)
+		if err != nil {
+			return err
+		}
+	}
+	f.Close()
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
