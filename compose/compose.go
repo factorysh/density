@@ -9,7 +9,7 @@ import (
 	"os"
 	"os/exec"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // EnsureBin will ensure that docker-compose is found in $PATH
@@ -33,7 +33,7 @@ func EnsureBin() error {
 // Compose is a docker-compose project
 type Compose struct {
 	raw     string
-	content map[interface{}]interface{}
+	content map[string]interface{}
 	tmpFile string
 }
 
@@ -104,6 +104,7 @@ func (c *Compose) Run(ctx context.Context, workingDirectory string, environments
 		return err
 	}
 	for k, v := range environments {
+		// TODO escape value
 		_, err = fmt.Fprintf(f, "%s=%s\n", k, v)
 		if err != nil {
 			return err
@@ -124,4 +125,28 @@ func (c *Compose) Run(ctx context.Context, workingDirectory string, environments
 	fmt.Println(stderr.String())
 
 	return err
+}
+
+func (c *Compose) Version() (string, error) {
+	v, ok := c.content["version"]
+	if !ok {
+		return "", errors.New("version is mandatory")
+	}
+	vv, ok := v.(string)
+	if !ok {
+		return "", errors.New("version must be a string")
+	}
+	return vv, nil
+}
+
+func (c *Compose) Services() (map[string]interface{}, error) {
+	s, ok := c.content["services"]
+	if !ok {
+		return nil, errors.New("services is mandatory")
+	}
+	ss, ok := s.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Wrong format : %v", s)
+	}
+	return ss, nil
 }
