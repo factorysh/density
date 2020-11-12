@@ -28,24 +28,19 @@ type Task struct {
 
 // NewTask init a new task
 func NewTask(o string, a Action) Task {
-	t, _ := New()
+	t := New()
 	t.Owner = o
 	t.Action = a
 	return *t
 }
 
-func New() (*Task, error) {
-	id, err := uuid.NewUUID()
-	if err != nil {
-		return nil, err
-	}
+func New() *Task {
 	return &Task{
 		CPU:    1,
 		RAM:    1,
 		Status: Waiting,
 		Mtime:  time.Now(),
-		Id:     id,
-	}, nil
+	}
 }
 
 type TaskByStart []*Task

@@ -21,10 +21,7 @@ func TaskFromCompose(cmps rawCompose.Compose) (*task.Task, error) {
 	if !ok {
 		return nil, fmt.Errorf("Wrong x-batch type: %v", cfg)
 	}
-	t, err := task.New()
-	if err != nil {
-		return nil, err
-	}
+	t := task.New()
 	retry, ok := cfg["retry"]
 	if ok {
 		rr, ok := retry.(int)
