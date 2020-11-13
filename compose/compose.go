@@ -31,36 +31,30 @@ func EnsureBin() error {
 }
 
 // Compose is a docker-compose project
-type Compose struct {
-	raw     string
-	content map[string]interface{}
-	tmpFile string
-}
+type Compose map[string]interface{}
 
 // FromYAML creates a new compose struct that implements the action.Job interface
-func FromYAML(desc []byte) (*Compose, error) {
-	c := make(map[string]interface{})
+// FIXME remove
+func FromYAML(desc []byte) (Compose, error) {
+	c := make(Compose)
 
 	err := yaml.Unmarshal(desc, c)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Compose{
-		raw:     string(desc),
-		content: c,
-	}, err
+	return c, err
 }
 
 // Validate compose content
-func (c *Compose) Validate() error {
-	file, err := ioutil.TempFile(fmt.Sprintf("%s/%s", c.tmpFile, "validator"), "")
+func (c Compose) Validate() error {
+	tmpfile := os.Getenv("BATCH_TMP")
+	if tmpfile == "" {
+		tmpfile = "/tmp"
+	}
+	file, err := ioutil.TempFile(fmt.Sprintf("%s/%s", tmpfile, "validator"), "")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(file.Name())
 
-	_, err = file.Write([]byte(c.raw))
+	err = yaml.NewEncoder(file).Encode(c)
 	if err != nil {
 		return err
 	}
@@ -81,18 +75,19 @@ func (c *Compose) Validate() error {
 }
 
 // ToYAML dump compose file as YAML
+// FIXME remove
 func (c *Compose) ToYAML() ([]byte, error) {
-	return yaml.Marshal(c.content)
+	return yaml.Marshal(c)
 }
 
 // Run compose action
-func (c *Compose) Run(ctx context.Context, workingDirectory string, environments map[string]string) error {
+func (c Compose) Run(ctx context.Context, workingDirectory string, environments map[string]string) error {
 	f, err := os.OpenFile(fmt.Sprintf("%s/docker-compose.yml", workingDirectory),
 		os.O_RDWR|os.O_CREATE, 0640)
 	if err != nil {
 		return err
 	}
-	err = yaml.NewEncoder(f).Encode(c.content)
+	err = yaml.NewEncoder(f).Encode(c)
 	if err != nil {
 		return err
 	}
@@ -127,8 +122,8 @@ func (c *Compose) Run(ctx context.Context, workingDirectory string, environments
 	return err
 }
 
-func (c *Compose) Version() (string, error) {
-	v, ok := c.content["version"]
+func (c Compose) Version() (string, error) {
+	v, ok := c["version"]
 	if !ok {
 		return "", errors.New("version is mandatory")
 	}
@@ -139,8 +134,8 @@ func (c *Compose) Version() (string, error) {
 	return vv, nil
 }
 
-func (c *Compose) Services() (map[string]interface{}, error) {
-	s, ok := c.content["services"]
+func (c Compose) Services() (map[string]interface{}, error) {
+	s, ok := c["services"]
 	if !ok {
 		return nil, errors.New("services is mandatory")
 	}
