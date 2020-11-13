@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 
 	"gopkg.in/yaml.v3"
 )
@@ -82,7 +83,7 @@ func (c *Compose) ToYAML() ([]byte, error) {
 
 // Run compose action
 func (c Compose) Run(ctx context.Context, workingDirectory string, environments map[string]string) error {
-	f, err := os.OpenFile(fmt.Sprintf("%s/docker-compose.yml", workingDirectory),
+	f, err := os.OpenFile(path.Join(WorkingDirectory, "docker-compose.yml"),
 		os.O_RDWR|os.O_CREATE, 0640)
 	if err != nil {
 		return err
@@ -93,7 +94,7 @@ func (c Compose) Run(ctx context.Context, workingDirectory string, environments 
 	}
 	f.Close()
 
-	f, err = os.OpenFile(fmt.Sprintf("%s/.env", workingDirectory),
+	f, err = os.OpenFile(path.Join(workingDirectory, ".env")),
 		os.O_RDWR|os.O_CREATE, 0640)
 	if err != nil {
 		return err
