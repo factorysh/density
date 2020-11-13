@@ -12,7 +12,7 @@ import (
 // Action interface describe behavior of a job
 type Action interface {
 	Validate() error
-	Run(ctx context.Context) error
+	Run(ctx context.Context, pwd string, environments map[string]string) error
 }
 
 // DummyAction is the most basic action, used for tests and illustration purpose
@@ -33,7 +33,7 @@ func (da *DummyAction) Validate() error {
 }
 
 // Run action interface implementation
-func (da *DummyAction) Run(ctx context.Context) error {
+func (da *DummyAction) Run(ctx context.Context, pwd string, environments map[string]string) error {
 	// Print name
 	fmt.Println(da.Name)
 	// Sleep

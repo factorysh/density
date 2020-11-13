@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/factorysh/batch-scheduler/action"
+	"github.com/factorysh/batch-scheduler/task"
 	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -18,14 +18,20 @@ type Scheduler struct {
 	tasks     map[uuid.UUID]*_task.Task
 	lock      sync.RWMutex
 	events    chan interface{}
+	runner    Runner
 }
 
-func New(resources *Resources) *Scheduler {
+type Runner interface {
+	Up(context.Context, *task.Task) error
+}
+
+func New(resources *Resources, runner Runner) *Scheduler {
 	return &Scheduler{
 		resources: resources,
 		tasks:     make(map[uuid.UUID]*_task.Task),
 		lock:      sync.RWMutex{},
 		events:    make(chan interface{}),
+		runner:    runner,
 	}
 }
 
@@ -93,9 +99,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}).Info()
 			chosen.Status = _task.Running
 			chosen.Mtime = time.Now()
-			ctx, cancel := context.WithTimeout(
-				context.WithValue(context.TODO(), "task", chosen), chosen.MaxExectionTime)
-			ctx = action.AddUUIDtoCtx(ctx, chosen.Id.String())
+			ctx, cancel := context.WithTimeout(context.TODO(), chosen.MaxExectionTime)
 
 			chosen.Cancel = func() {
 				cancel()
@@ -105,7 +109,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}
 			go func(ctx context.Context, task *_task.Task) {
 				defer task.Cancel()
-				err := task.Action.Run(ctx)
+				err := s.runner.Up(ctx, task)
 				if err != nil {
 					l.Error(err)
 				}

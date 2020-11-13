@@ -8,7 +8,7 @@ import (
 	"github.com/factorysh/batch-scheduler/task"
 )
 
-func TaskFromCompose(cmps rawCompose.Compose) (*task.Task, error) {
+func TaskFromCompose(cmps *rawCompose.Compose) (*task.Task, error) {
 	services, err := cmps.Services()
 	if err != nil {
 		return nil, err
@@ -22,6 +22,7 @@ func TaskFromCompose(cmps rawCompose.Compose) (*task.Task, error) {
 		return nil, fmt.Errorf("Wrong x-batch type: %v", cfg)
 	}
 	t := task.New()
+	t.Action = cmps
 	retry, ok := cfg["retry"]
 	if ok {
 		rr, ok := retry.(int)
