@@ -13,6 +13,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var composeIsHere bool = false
+
 // EnsureBin will ensure that docker-compose is found in $PATH
 func EnsureBin() error {
 	var name = "docker-compose"
@@ -31,6 +33,18 @@ func EnsureBin() error {
 	return nil
 }
 
+func lazyEnsureBin() error {
+	if composeIsHere {
+		return nil
+	}
+	err := EnsureBin()
+	if err != nil {
+		return err
+	}
+	composeIsHere = true
+	return nil
+}
+
 // Compose is a docker-compose project
 type Compose map[string]interface{}
 
@@ -45,6 +59,10 @@ func FromYAML(desc []byte) (Compose, error) {
 
 // Validate compose content
 func (c Compose) Validate() error {
+	err := lazyEnsureBin()
+	if err != nil {
+		return err
+	}
 	tmpfile := os.Getenv("BATCH_TMP")
 	if tmpfile == "" {
 		tmpfile = "/tmp"
@@ -83,6 +101,10 @@ func (c *Compose) ToYAML() ([]byte, error) {
 
 // Run compose action
 func (c Compose) Run(ctx context.Context, workingDirectory string, environments map[string]string) error {
+	err := lazyEnsureBin()
+	if err != nil {
+		return err
+	}
 	f, err := os.OpenFile(path.Join(WorkingDirectory, "docker-compose.yml"),
 		os.O_RDWR|os.O_CREATE, 0640)
 	if err != nil {
