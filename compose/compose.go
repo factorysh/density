@@ -111,7 +111,7 @@ func (c Compose) Run(ctx context.Context, workingDirectory string, environments 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("docker-compose", "up", "--abort-on-container-exit")
+	cmd := exec.CommandContext(ctx, "docker-compose", "up", "--abort-on-container-exit")
 	cmd.Dir = workingDirectory
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
