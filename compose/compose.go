@@ -99,7 +99,7 @@ func (c Compose) Run(ctx context.Context, workingDirectory string, environments 
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path.Join(WorkingDirectory, "docker-compose.yml"),
+	f, err := os.OpenFile(path.Join(workingDirectory, "docker-compose.yml"),
 		os.O_RDWR|os.O_CREATE, 0640)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (c Compose) Run(ctx context.Context, workingDirectory string, environments 
 	}
 	f.Close()
 
-	f, err = os.OpenFile(path.Join(workingDirectory, ".env")),
+	f, err = os.OpenFile(path.Join(workingDirectory, ".env"),
 		os.O_RDWR|os.O_CREATE, 0640)
 	if err != nil {
 		return err
