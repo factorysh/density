@@ -93,12 +93,6 @@ func (c Compose) Validate() error {
 	return err
 }
 
-// ToYAML dump compose file as YAML
-// FIXME remove
-func (c *Compose) ToYAML() ([]byte, error) {
-	return yaml.Marshal(c)
-}
-
 // Run compose action
 func (c Compose) Run(ctx context.Context, workingDirectory string, environments map[string]string) error {
 	err := lazyEnsureBin()
