@@ -19,7 +19,7 @@ test:
 	go test -cover -timeout 30s \
 	github.com/factorysh/batch-scheduler/scheduler
 	go test -cover -timeout 30s \
-	github.com/factorysh/batch-scheduler/action
+	github.com/factorysh/batch-scheduler/compose
 
 generate:
 	go generate ./task
