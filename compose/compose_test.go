@@ -38,6 +38,15 @@ func TestRunCompose(t *testing.T) {
 			c, err := FromYAML([]byte(tc.input))
 			assert.NoError(t, err)
 
+			v, err := c.Version()
+			assert.NoError(t, err)
+			assert.Equal(t, "3", v)
+
+			s, err := c.Services()
+			assert.NoError(t, err)
+			_, ok := s["hello"]
+			assert.True(t, ok)
+
 			ctx := context.Background()
 			err = c.Run(ctx, "/tmp", nil)
 			assert.NoError(t, err)

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"reflect"
 
 	"gopkg.in/yaml.v3"
 )
@@ -156,9 +157,16 @@ func (c Compose) Services() (map[string]interface{}, error) {
 	if !ok {
 		return nil, errors.New("services is mandatory")
 	}
-	ss, ok := s.(map[string]interface{})
-	if !ok {
+	v := reflect.ValueOf(s)
+	if v.Kind() != reflect.Map {
 		return nil, fmt.Errorf("Wrong format : %v", s)
 	}
-	return ss, nil
+	r := make(map[string]interface{})
+	for _, k := range v.MapKeys() {
+		if k.Kind() != reflect.String {
+			return nil, fmt.Errorf("Wrong key format: %v", k)
+		}
+		r[k.String()] = v.MapIndex(k)
+	}
+	return r, nil
 }
