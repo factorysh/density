@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/tj/assert"
+	"gopkg.in/yaml.v3"
 )
 
 const validCompose = `
@@ -21,6 +22,33 @@ services:
   hello:
     command: "echo world"
 `
+
+func TestValidate(t *testing.T) {
+	tests := []struct {
+		input []byte
+		isOk  bool
+	}{
+		{
+			input: []byte(validCompose),
+			isOk:  true,
+		},
+		{
+			input: []byte(invalidCompose),
+			isOk:  false,
+		},
+	}
+	for _, tc := range tests {
+		var c Compose
+		err := yaml.Unmarshal(tc.input, &c)
+		assert.NoError(t, err)
+		err = c.Validate()
+		if tc.isOk {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err)
+		}
+	}
+}
 
 func TestRunCompose(t *testing.T) {
 	tests := []struct {

@@ -68,11 +68,20 @@ func (c Compose) Validate() error {
 	if tmpfile == "" {
 		tmpfile = "/tmp"
 	}
-	file, err := ioutil.TempFile(fmt.Sprintf("%s/%s", tmpfile, "validator"), "")
+	tmpdir, err := ioutil.TempDir(tmpfile, "")
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(tmpdir, 0750)
+	if err != nil {
+		return err
+	}
+	file, err := os.OpenFile(path.Join(tmpdir, "validator"), os.O_CREATE|os.O_WRONLY, 0640)
 	if err != nil {
 		return err
 	}
 	defer os.Remove(file.Name())
+	defer os.Remove(tmpdir)
 
 	err = yaml.NewEncoder(file).Encode(c)
 	if err != nil {
