@@ -9,13 +9,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/factorysh/batch-scheduler/runner/compose"
+	compose_runner "github.com/factorysh/batch-scheduler/runner/compose"
+	"github.com/factorysh/batch-scheduler/task"
 	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
+type DummyRunner struct {
+}
+
+func (d *DummyRunner) Up(ctx context.Context, _task *task.Task) error {
+	return _task.Action.Run(ctx, "/tmp/", nil)
+}
+
 func TestScheduler(t *testing.T) {
-	s := New(NewResources(4, 16*1024))
+	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go s.Start(ctx)
@@ -84,7 +94,7 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestFlood(t *testing.T) {
-	s := New(NewResources(4, 16*1024))
+	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"))
 	wait := sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
@@ -112,7 +122,7 @@ func TestFlood(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	s := New(NewResources(4, 16*1024))
+	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"))
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -143,7 +153,7 @@ func TestTimeout(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
-	s := New(NewResources(4, 16*1024))
+	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"))
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -172,7 +182,7 @@ func TestCancel(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	s := New(NewResources(4, 16*1024))
+	s := New(NewResources(4, 16*1024), compose.New("/tmp"))
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()

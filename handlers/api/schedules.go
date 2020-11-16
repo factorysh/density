@@ -6,13 +6,15 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/factorysh/batch-scheduler/action"
+	rawCompose "github.com/factorysh/batch-scheduler/compose"
+	"github.com/factorysh/batch-scheduler/input/compose"
 	"github.com/factorysh/batch-scheduler/owner"
 	"github.com/factorysh/batch-scheduler/scheduler"
 	"github.com/factorysh/batch-scheduler/task"
 	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"gopkg.in/yaml.v3"
 )
 
 // JOB is used as key in map of http vars
@@ -79,7 +81,6 @@ func HandleGetSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		var t task.Task
 		hub := sentry.GetHubFromContext(r.Context())
 
 		vars := mux.Vars(r)
@@ -123,7 +124,8 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 			})
 		}
 
-		a, err := action.NewAction(action.DockerCompose, content)
+		var myCompose rawCompose.Compose
+		err = yaml.Unmarshal(content, &myCompose)
 		if err != nil {
 			if hub != nil {
 				hub.CaptureException(err)
@@ -133,7 +135,17 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 			return
 		}
 
-		err = a.Validate()
+		err = myCompose.Validate()
+		if err != nil {
+			if hub != nil {
+				hub.CaptureException(err)
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+
+		t, err := compose.TaskFromCompose(&myCompose)
 		if err != nil {
 			if hub != nil {
 				hub.CaptureException(err)
@@ -152,10 +164,10 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 		// if user is admin and request for an explicit task creation
 		if u.Admin && explicit {
 			// use parameter as owner
-			t = task.NewTask(o, a)
+			t.Owner = o
 		} else {
 			// else, just use the user passed in the context
-			t = task.NewTask(u.Name, a)
+			t.Owner = u.Name
 		}
 		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 			hub.WithScope(func(scope *sentry.Scope) {
@@ -164,7 +176,7 @@ func HandlePostSchedules(schd *scheduler.Scheduler) http.HandlerFunc {
 		}
 
 		// add tasks to current tasks
-		_, err = schd.Add(&t)
+		_, err = schd.Add(t)
 		if err != nil {
 			if hub != nil {
 				hub.CaptureException(err)

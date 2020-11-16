@@ -8,14 +8,14 @@ import (
 
 	"github.com/getsentry/sentry-go"
 
-	"github.com/factorysh/batch-scheduler/action"
+	"github.com/factorysh/batch-scheduler/compose"
 	"github.com/factorysh/batch-scheduler/server"
 	"github.com/factorysh/batch-scheduler/version"
 )
 
 func main() {
 
-	err := action.EnsureBin()
+	err := compose.EnsureBin()
 	if err != nil {
 		log.Fatal("ensure bin:", err)
 	}
