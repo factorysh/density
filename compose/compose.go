@@ -140,6 +140,7 @@ func (c Compose) Run(ctx context.Context, workingDirectory string, environments 
 	return err
 }
 
+// Version check if version is set in docker compose file
 func (c Compose) Version() (string, error) {
 	v, ok := c["version"]
 	if !ok {
@@ -152,6 +153,7 @@ func (c Compose) Version() (string, error) {
 	return vv, nil
 }
 
+// Services gets all the services from a compose file
 func (c Compose) Services() (map[string]interface{}, error) {
 	s, ok := c["services"]
 	if !ok {
