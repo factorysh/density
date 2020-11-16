@@ -63,7 +63,8 @@ func TestRunCompose(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			c, err := FromYAML([]byte(tc.input))
+			var c Compose
+			err := yaml.Unmarshal([]byte(tc.input), &c)
 			assert.NoError(t, err)
 
 			v, err := c.Version()

@@ -49,15 +49,6 @@ func lazyEnsureBin() error {
 // Compose is a docker-compose project
 type Compose map[string]interface{}
 
-// FromYAML creates a new compose struct that implements the action.Job interface
-// FIXME remove
-func FromYAML(desc []byte) (Compose, error) {
-	c := make(Compose)
-
-	err := yaml.Unmarshal(desc, c)
-	return c, err
-}
-
 // Validate compose content
 func (c Compose) Validate() error {
 	err := lazyEnsureBin()
