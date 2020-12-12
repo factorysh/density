@@ -46,6 +46,18 @@ x-batch:
     cron:
 ```
 
+#### Architecture
+
+`task.Task` is an abstract task to schedule.
+
+Main task implementation is a *docker-compose.yml*.
+
+`task.Action` is an abstract for a running task.
+
+`scheduler.Scheduler` consumes `task.Task`.
+
+
+
 License
 -------
 
