@@ -23,8 +23,12 @@ func (j *JSONStore) Get(id uuid.UUID) (*task.Task, error) {
 	if v == nil {
 		return nil, nil
 	}
+	return parseTask(v)
+}
+
+func parseTask(v []byte) (*task.Task, error) {
 	var t task.Task
-	err = json.Unmarshal(v, &t)
+	err := json.Unmarshal(v, &t)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +36,7 @@ func (j *JSONStore) Get(id uuid.UUID) (*task.Task, error) {
 }
 
 // Put task.Task
-func (j *JSONStore) Put(t task.Task) error {
+func (j *JSONStore) Put(t *task.Task) error {
 	if t.Id == uuid.Nil {
 		return errors.New("Task wihtout id")
 	}
@@ -46,4 +50,22 @@ func (j *JSONStore) Put(t task.Task) error {
 // Delete a task
 func (j *JSONStore) Delete(id uuid.UUID) error {
 	return j.store.Delete([]byte(id.String()))
+}
+
+// Length of the store
+func (j *JSONStore) Length() int {
+	return j.store.Length()
+}
+
+// ForEach loops over kv
+func (j *JSONStore) ForEach(fn func(t *task.Task) error) error {
+	j.store.ForEach(func(k, v []byte) error {
+		// k is the UUID, serialized in v
+		t, err := parseTask(v)
+		if err != nil {
+			return err
+		}
+		return fn(t)
+	})
+	return nil
 }

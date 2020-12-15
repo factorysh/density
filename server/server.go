@@ -14,6 +14,7 @@ import (
 	"github.com/factorysh/batch-scheduler/middlewares"
 	"github.com/factorysh/batch-scheduler/runner/compose"
 	"github.com/factorysh/batch-scheduler/scheduler"
+	"github.com/factorysh/batch-scheduler/store"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/mux"
 )
@@ -46,7 +47,7 @@ func (s *Server) Initialize() {
 
 	// TODO: dynamic ressource parameters (env, file, whatever)
 	// FIXME where is my home?
-	s.Scheduler = scheduler.New(scheduler.NewResources(2, 512*16), compose.New("/tmp"))
+	s.Scheduler = scheduler.New(scheduler.NewResources(2, 512*16), compose.New("/tmp"), store.NewMemoryStore())
 
 	// TODO: handle context
 	go s.Scheduler.Start(context.Background())

@@ -11,6 +11,7 @@ import (
 
 	"github.com/factorysh/batch-scheduler/runner/compose"
 	compose_runner "github.com/factorysh/batch-scheduler/runner/compose"
+	"github.com/factorysh/batch-scheduler/store"
 	"github.com/factorysh/batch-scheduler/task"
 	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/google/uuid"
@@ -25,7 +26,7 @@ func (d *DummyRunner) Up(ctx context.Context, _task *task.Task) error {
 }
 
 func TestScheduler(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"))
+	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go s.Start(ctx)
@@ -94,7 +95,7 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestFlood(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"))
+	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"), store.NewMemoryStore())
 	wait := sync.WaitGroup{}
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
@@ -122,7 +123,7 @@ func TestFlood(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"))
+	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -146,14 +147,15 @@ func TestTimeout(t *testing.T) {
 	wait.Wait()
 	assert.Equal(t, "canceled", a.Status)
 	assert.Len(t, s.tasks, 1)
-	for _, tt := range s.tasks {
+	s.tasks.ForEach(func(tt *_task.Task) error {
 		assert.NotEqual(t, _task.Waiting, tt.Status)
 		assert.NotEqual(t, _task.Running, tt.Status)
-	}
+		return nil
+	})
 }
 
 func TestCancel(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"))
+	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -182,7 +184,7 @@ func TestCancel(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose.New("/tmp"))
+	s := New(NewResources(4, 16*1024), compose.New("/tmp"), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()

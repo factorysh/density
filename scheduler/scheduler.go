@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	_store "github.com/factorysh/batch-scheduler/store"
 	"github.com/factorysh/batch-scheduler/task"
 	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/google/uuid"
@@ -15,7 +16,7 @@ import (
 
 type Scheduler struct {
 	resources *Resources
-	tasks     map[uuid.UUID]*_task.Task
+	tasks     *JSONStore
 	lock      sync.RWMutex
 	events    chan interface{}
 	runner    Runner
@@ -25,11 +26,10 @@ type Runner interface {
 	Up(context.Context, *task.Task) error
 }
 
-func New(resources *Resources, runner Runner) *Scheduler {
+func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 	return &Scheduler{
 		resources: resources,
-		tasks:     make(map[uuid.UUID]*_task.Task),
-		lock:      sync.RWMutex{},
+		tasks:     &JSONStore{store},
 		events:    make(chan interface{}),
 		runner:    runner,
 	}
@@ -53,9 +53,10 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	task.Id = id
 	task.Status = _task.Waiting
 	task.Mtime = time.Now()
-	s.lock.Lock()
-	s.tasks[task.Id] = task
-	s.lock.Unlock()
+	err = s.tasks.Put(task)
+	if err != nil {
+		return uuid.Nil, err
+	}
 	task.Cancel = func() {
 		task.Status = _task.Canceled
 	}
@@ -69,7 +70,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 		select {
 		case <-s.events:
 		}
-		l := log.WithField("tasks", len(s.tasks))
+		l := log.WithField("tasks", s.tasks.Length())
 		todos := s.readyToGo()
 		l = l.WithField("todos", len(todos))
 		if len(todos) == 0 { // nothing is ready  just wait
@@ -124,31 +125,29 @@ func (s *Scheduler) Start(ctx context.Context) {
 
 // List all the tasks associated with this scheduler
 func (s *Scheduler) List() []*_task.Task {
-	tasks := []*_task.Task{}
+	tasks := make([]*_task.Task, 0)
 
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	for _, val := range s.tasks {
-		tasks = append(tasks, val)
-	}
+	s.tasks.ForEach(func(t *_task.Task) error {
+		tasks = append(tasks, t)
+		return nil
+	})
 
 	return tasks
-
 }
 
 // Filter tasks for a specific owner
 func (s *Scheduler) Filter(owner string) []*_task.Task {
-	tasks := []*_task.Task{}
+	tasks := make([]*_task.Task, 0)
 
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	for _, val := range s.tasks {
-		if val.Owner == owner {
-			tasks = append(tasks, val)
+	s.tasks.ForEach(func(t *_task.Task) error {
+		if t.Owner == owner {
+			tasks = append(tasks, t)
 		}
-	}
+		return nil
+	})
 
 	return tasks
 }
@@ -158,28 +157,30 @@ func (s *Scheduler) readyToGo() []*_task.Task {
 	tasks := make(_task.TaskByKarma, 0)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	for _, task := range s.tasks {
+	s.tasks.ForEach(func(task *_task.Task) error {
 		// enough CPU, enough RAM, Start date is okay
 		if task.Start.Before(now) && task.Status == _task.Waiting && s.resources.IsDoable(task.CPU, task.RAM) {
 			tasks = append(tasks, task)
 		}
-	}
+		return nil
+	})
 	sort.Sort(tasks)
 	return tasks
 }
 
 func (s *Scheduler) next() *_task.Task {
-	if len(s.tasks) == 0 {
+	if s.tasks.Length() == 0 {
 		return nil
 	}
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	tasks := make(_task.TaskByStart, 0)
-	for _, task := range s.tasks {
+	s.tasks.ForEach(func(task *_task.Task) error {
 		if task.Status == _task.Waiting {
 			tasks = append(tasks, task)
 		}
-	}
+		return nil
+	})
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -189,10 +190,11 @@ func (s *Scheduler) next() *_task.Task {
 
 // Cancel a task
 func (s *Scheduler) Cancel(id uuid.UUID) error {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	task, ok := s.tasks[id]
-	if !ok {
+	task, err := s.tasks.Get(id)
+	if err != nil {
+		return err
+	}
+	if task == nil {
 		return errors.New("Unknown id")
 	}
 	if task.Status == _task.Running {
@@ -205,21 +207,18 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 
 // Length returns the number of Task
 func (s *Scheduler) Length() int {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	return len(s.tasks)
+	return s.tasks.Length()
 }
 
 func (s *Scheduler) Flush(age time.Duration) int {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	now := time.Now()
 	i := 0
-	for id, task := range s.tasks {
+	s.tasks.ForEach(func(task *_task.Task) error {
 		if task.Status != _task.Running && task.Status != _task.Waiting && now.Sub(task.Mtime) > age {
-			delete(s.tasks, id)
+			s.tasks.Delete(task.Id)
 			i++
 		}
-	}
+		return nil
+	})
 	return i
 }

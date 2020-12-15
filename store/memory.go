@@ -27,3 +27,17 @@ func (m *MemoryStore) Delete(key []byte) error {
 	delete(m.kv, string(key))
 	return nil
 }
+
+func (m *MemoryStore) Length() int {
+	return len(m.kv)
+}
+
+func (m *MemoryStore) ForEach(fn func(k, v []byte) error) error {
+	for k, v := range m.kv {
+		err := fn([]byte(k), v)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
