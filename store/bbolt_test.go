@@ -1,4 +1,4 @@
-package scheduler
+package store
 
 import (
 	"sync"
