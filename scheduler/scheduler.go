@@ -116,6 +116,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 				}
 				task.Status = _task.Done
 				task.Mtime = time.Now()
+				s.tasks.Put(task)
 				s.events <- new(interface{}) // a slot is now free, let's try to full it
 			}(ctx, chosen)
 			s.lock.Unlock()
