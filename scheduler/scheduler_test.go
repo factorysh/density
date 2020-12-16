@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
-	"sync"
 	"testing"
 	"time"
 
@@ -30,7 +29,7 @@ func TestScheduler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go s.Start(ctx)
-	wait := sync.WaitGroup{}
+	wait := _task.NewWaiter()
 	wait.Add(1)
 	task := &_task.Task{
 		Owner:           "test",
@@ -39,7 +38,7 @@ func TestScheduler(t *testing.T) {
 		Action: &_task.DummyAction{
 			Name: "Action A",
 			Wait: 10,
-			Wg:   &wait,
+			Wg:   wait,
 		},
 		CPU: 2,
 		RAM: 256,
@@ -68,7 +67,7 @@ func TestScheduler(t *testing.T) {
 			Action: &_task.DummyAction{
 				Name: "Action B",
 				Wait: 400,
-				Wg:   &wait,
+				Wg:   wait,
 			},
 		},
 		{
@@ -79,7 +78,7 @@ func TestScheduler(t *testing.T) {
 			Action: &_task.DummyAction{
 				Name: "Action C",
 				Wait: 300,
-				Wg:   &wait,
+				Wg:   wait,
 			},
 		},
 	} {
@@ -96,7 +95,7 @@ func TestScheduler(t *testing.T) {
 
 func TestFlood(t *testing.T) {
 	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"), store.NewMemoryStore())
-	wait := sync.WaitGroup{}
+	wait := _task.NewWaiter()
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -104,7 +103,7 @@ func TestFlood(t *testing.T) {
 		Name:    "Test Flood",
 		Wait:    250,
 		Counter: 0,
-		Wg:      &wait,
+		Wg:      wait,
 	}
 	size := 30
 	for i := 0; i < size; i++ {
@@ -128,11 +127,11 @@ func TestTimeout(t *testing.T) {
 	go s.Start(ctx)
 	defer cancel()
 
-	wait := sync.WaitGroup{}
+	wait := _task.NewWaiter()
 	a := _task.DummyAction{
 		Name:        "Test Timeout",
 		WithTimeout: true,
-		Wg:          &wait,
+		Wg:          wait,
 	}
 	wait.Add(1)
 	task := &_task.Task{
@@ -160,11 +159,11 @@ func TestCancel(t *testing.T) {
 	go s.Start(ctx)
 	defer cancel()
 
-	wait := sync.WaitGroup{}
+	wait := _task.NewWaiter()
 	a := _task.DummyAction{
 		Name:        "Test Timeout",
 		WithTimeout: true,
-		Wg:          &wait,
+		Wg:          wait,
 	}
 	wait.Add(1)
 	task := &_task.Task{
@@ -189,11 +188,11 @@ func TestExec(t *testing.T) {
 	go s.Start(ctx)
 	defer cancel()
 
-	wait := sync.WaitGroup{}
+	wait := _task.NewWaiter()
 	a := _task.DummyAction{
 		Name:        "Test Exec",
 		WithCommand: true,
-		Wg:          &wait,
+		Wg:          wait,
 	}
 	wait.Add(1)
 	task := &_task.Task{

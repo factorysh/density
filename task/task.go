@@ -2,6 +2,7 @@ package task
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,21 +10,64 @@ import (
 
 // Task something to do
 type Task struct {
-	Start           time.Time          // Start time
-	MaxWaitTime     time.Duration      // Max wait time before starting Action
-	MaxExectionTime time.Duration      // Max execution time
-	CPU             int                // CPU quota
-	RAM             int                // RAM quota
-	Action          Action             `json:"-"` // Action is an abstract, the thing to do
-	Id              uuid.UUID          // Id
-	Cancel          context.CancelFunc `json:"-"` // Cancel the action
-	Status          Status             // Status
-	Mtime           time.Time          // Modified time
-	Owner           string             // Owner
-	Retry           int                // Number of retry before crash
-	Every           time.Duration      // Periodic execution. Exclusive with Cron
-	Cron            string             // Cron definition. Exclusive with Every
-	resourceCancel  context.CancelFunc
+	Start           time.Time          `json:"start"`              // Start time
+	MaxWaitTime     time.Duration      `json:"max_wait_time"`      // Max wait time before starting Action
+	MaxExectionTime time.Duration      `json:"max_execution_time"` // Max execution time
+	CPU             int                `json:"cpu"`                // CPU quota
+	RAM             int                `json:"ram"`                // RAM quota
+	Action          Action             `json:"action"`             // Action is an abstract, the thing to do
+	Id              uuid.UUID          `json:"id"`                 // Id
+	Cancel          context.CancelFunc `json:"-"`                  // Cancel the action
+	Status          Status             `json:"status"`             // Status
+	Mtime           time.Time          `json:"mtime"`              // Modified time
+	Owner           string             `json:"owner"`              // Owner
+	Retry           int                `json:"retry"`              // Number of retry before crash
+	Every           time.Duration      `json:"every"`              // Periodic execution. Exclusive with Cron
+	Cron            string             `json:"cron"`               // Cron definition. Exclusive with Every
+	resourceCancel  context.CancelFunc `json:"-"`
+}
+
+func (t *Task) UnmarshalJSON(b []byte) error {
+	raw := struct {
+		Start           time.Time       `json:"start"`              // Start time
+		MaxWaitTime     time.Duration   `json:"max_wait_time"`      // Max wait time before starting Action
+		MaxExectionTime time.Duration   `json:"max_execution_time"` // Max execution time
+		CPU             int             `json:"cpu"`                // CPU quota
+		RAM             int             `json:"ram"`                // RAM quota
+		Action          json.RawMessage `json:"action"`             // Action is an abstract, the thing to do
+		Id              uuid.UUID       `json:"id"`                 // Id
+		Status          Status          `json:"status"`             // Status
+		Mtime           time.Time       `json:"mtime"`              // Modified time
+		Owner           string          `json:"owner"`              // Owner
+		Retry           int             `json:"retry"`              // Number of retry before crash
+		Every           time.Duration   `json:"every"`              // Periodic execution. Exclusive with Cron
+		Cron            string          `json:"cron"`               // Cron definition. Exclusive with Every
+	}{}
+	err := json.Unmarshal(b, &raw)
+	if err != nil {
+		return err
+	}
+	t.Start = raw.Start
+	t.MaxWaitTime = raw.MaxWaitTime
+	t.MaxExectionTime = raw.MaxExectionTime
+	t.CPU = raw.CPU
+	t.RAM = raw.RAM
+	t.Id = raw.Id
+	t.Status = raw.Status
+	t.Mtime = raw.Mtime
+	t.Owner = raw.Owner
+	t.Retry = raw.Retry
+	t.Every = raw.Every
+	t.Cron = raw.Cron
+
+	var d DummyAction
+	err = json.Unmarshal(raw.Action, &d)
+	if err != nil {
+		return err
+	}
+	t.Action = &d
+
+	return nil
 }
 
 // NewTask init a new task
