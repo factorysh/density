@@ -27,6 +27,28 @@ func (d *DummyRunner) Up(ctx context.Context, _task *task.Task) error {
 	return _task.Action.Run(ctx, "/tmp/", nil)
 }
 
+func waitFor(ps *PubSub, size int, clause func(evt Event) bool) *sync.WaitGroup {
+	wait := &sync.WaitGroup{}
+	wait.Add(size)
+
+	go func() {
+		ctx, cancel := context.WithCancel(context.TODO())
+		defer cancel()
+		events := ps.Subscribe(ctx)
+		for {
+			event := <-events
+			if clause(event) {
+				wait.Done()
+				size--
+			}
+			if size == 0 {
+				return
+			}
+		}
+	}()
+	return wait
+}
+
 func TestScheduler(t *testing.T) {
 	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
 	assert.NoError(t, err)
@@ -49,20 +71,9 @@ func TestScheduler(t *testing.T) {
 	id, err := s.Add(task)
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, id)
-	wait := &sync.WaitGroup{}
-	wait.Add(1)
-	go func() {
-		ctx, cancel := context.WithCancel(context.TODO())
-		defer cancel()
-		events := s.Pubsub.Subscribe(ctx)
-		for {
-			event := <-events
-			if event.Id == id && event.Action == "done" {
-				wait.Done()
-				return
-			}
-		}
-	}()
+	wait := waitFor(s.Pubsub, 1, func(event Event) bool {
+		return event.Id == id && event.Action == "done"
+	})
 	list := s.List()
 	assert.Equal(t, 1, len(list))
 	filtered := s.Filter("test")
@@ -73,7 +84,9 @@ func TestScheduler(t *testing.T) {
 
 	// Second part
 
-	wait.Add(2)
+	wait = waitFor(s.Pubsub, 2, func(event Event) bool {
+		return event.Action == "done"
+	})
 	actions := make([]int, 0)
 	ids := make([]uuid.UUID, 0)
 	for _, task := range []*_task.Task{
@@ -102,22 +115,6 @@ func TestScheduler(t *testing.T) {
 		assert.NoError(t, err)
 		ids = append(ids, id)
 	}
-	go func() {
-		ctx, cancel := context.WithCancel(context.TODO())
-		defer cancel()
-		events := s.Pubsub.Subscribe(ctx)
-		i := 2
-		for {
-			event := <-events
-			if event.Action == "done" {
-				wait.Done()
-				i--
-			}
-			if i == 0 {
-				return
-			}
-		}
-	}()
 	wait.Wait()
 	sort.Ints(actions)
 	// TODO: FIXME
@@ -131,7 +128,6 @@ func TestFlood(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 	s := New(NewResources(4, 16*1024), compose_runner.New(dir), store.NewMemoryStore())
-	wait := _task.NewWaiter()
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -139,11 +135,10 @@ func TestFlood(t *testing.T) {
 		Name:    "Test Flood",
 		Wait:    250,
 		Counter: 0,
-		Wg:      wait,
 	}
 	size := 30
 	for i := 0; i < size; i++ {
-		wait.Add(1)
+		//wait.Add(1)
 		s.Add(&_task.Task{
 			Start:           time.Now(),
 			CPU:             rand.Intn(4) + 1,
@@ -152,7 +147,7 @@ func TestFlood(t *testing.T) {
 			Action:          &a,
 		})
 	}
-	wait.Wait()
+	//wait.Wait()
 	fmt.Println(a.Counter)
 	assert.Equal(t, a.Counter, int64(size))
 }
@@ -166,13 +161,13 @@ func TestTimeout(t *testing.T) {
 	go s.Start(ctx)
 	defer cancel()
 
-	wait := _task.NewWaiter()
+	//wait := _task.NewWaiter()
 	a := _task.DummyAction{
 		Name:        "Test Timeout",
 		WithTimeout: true,
-		Wg:          wait,
+		//Wg:          wait,
 	}
-	wait.Add(1)
+	//wait.Add(1)
 	task := &_task.Task{
 		Start:           time.Now(),
 		CPU:             2,
@@ -182,7 +177,7 @@ func TestTimeout(t *testing.T) {
 	}
 	_, err = s.Add(task)
 	assert.NoError(t, err)
-	wait.Wait()
+	//wait.Wait()
 	assert.Equal(t, "canceled", a.Status)
 	assert.Len(t, s.tasks, 1)
 	s.tasks.ForEach(func(tt *_task.Task) error {
@@ -201,13 +196,13 @@ func TestCancel(t *testing.T) {
 	go s.Start(ctx)
 	defer cancel()
 
-	wait := _task.NewWaiter()
+	//wait := _task.NewWaiter()
 	a := _task.DummyAction{
 		Name:        "Test Timeout",
 		WithTimeout: true,
-		Wg:          wait,
+		//Wg:          wait,
 	}
-	wait.Add(1)
+	//wait.Add(1)
 	task := &_task.Task{
 		Start:           time.Now(),
 		CPU:             2,
@@ -219,7 +214,7 @@ func TestCancel(t *testing.T) {
 	assert.NoError(t, err)
 	err = s.Cancel(id)
 	assert.NoError(t, err)
-	wait.Wait()
+	//wait.Wait()
 	assert.Equal(t, 1, s.Length())
 	assert.Equal(t, "canceled", a.Status)
 }
@@ -233,13 +228,13 @@ func TestExec(t *testing.T) {
 	go s.Start(ctx)
 	defer cancel()
 
-	wait := _task.NewWaiter()
+	//wait := _task.NewWaiter()
 	a := _task.DummyAction{
 		Name:        "Test Exec",
 		WithCommand: true,
-		Wg:          wait,
+		//Wg:          wait,
 	}
-	wait.Add(1)
+	//wait.Add(1)
 	task := &_task.Task{
 		Start:           time.Now(),
 		CPU:             1,
@@ -249,6 +244,6 @@ func TestExec(t *testing.T) {
 	}
 	_, err = s.Add(task)
 	assert.NoError(t, err)
-	wait.Wait()
+	//wait.Wait()
 	assert.NotEqual(t, 0, a.ExitCode)
 }
