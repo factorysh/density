@@ -32,7 +32,6 @@ func parseTask(v []byte) (*task.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.Action = &task.DummyAction{}
 	return &t, nil
 }
 
