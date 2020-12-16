@@ -11,8 +11,6 @@ import (
 
 func TestJson(t *testing.T) {
 
-	wait := NewWaiter()
-	wait.Add(1)
 	task := &Task{
 		Owner:           "test",
 		Start:           time.Now(),
@@ -20,7 +18,6 @@ func TestJson(t *testing.T) {
 		Action: &DummyAction{
 			Name: "Action A",
 			Wait: 10,
-			Wg:   wait,
 		},
 		CPU: 2,
 		RAM: 256,
@@ -32,6 +29,5 @@ func TestJson(t *testing.T) {
 	err = json.Unmarshal(raw, &task2)
 	assert.NoError(t, err)
 	action := task2.Action.(*DummyAction)
-	action.Wg.Done()
-	action.Wg.Wait()
+	assert.Equal(t, "Action A", action.Name)
 }
