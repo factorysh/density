@@ -2,10 +2,15 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 type Event struct {
+	Action string    `json:"action"`
+	Id     uuid.UUID `json:"id"`
 }
 
 type PubSub struct {
@@ -42,6 +47,7 @@ func (p *PubSub) Subscribe(ctx context.Context) chan Event {
 }
 
 func (p *PubSub) Publish(evt Event) {
+	fmt.Println("publish", evt)
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	// Warning, chans are blocking
