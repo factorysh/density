@@ -20,7 +20,7 @@ func New(home string) *ComposeRunner {
 func (c *ComposeRunner) Up(ctx context.Context, task *task.Task) error {
 	pwd := path.Join(c.Home, task.Id.String())
 	err := os.Mkdir(pwd, 0750)
-	if err != nil {
+	if err != nil && os.IsNotExist(err) {
 		return err
 	}
 	env := map[string]string{
