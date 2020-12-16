@@ -3,7 +3,9 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -25,7 +27,10 @@ func (d *DummyRunner) Up(ctx context.Context, _task *task.Task) error {
 }
 
 func TestScheduler(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"), store.NewMemoryStore())
+	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	s := New(NewResources(4, 16*1024), compose_runner.New(dir), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go s.Start(ctx)
@@ -94,7 +99,10 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestFlood(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"), store.NewMemoryStore())
+	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	s := New(NewResources(4, 16*1024), compose_runner.New(dir), store.NewMemoryStore())
 	wait := _task.NewWaiter()
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
@@ -122,7 +130,10 @@ func TestFlood(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"), store.NewMemoryStore())
+	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	s := New(NewResources(4, 16*1024), compose_runner.New(dir), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -141,7 +152,7 @@ func TestTimeout(t *testing.T) {
 		MaxExectionTime: 1 * time.Second,
 		Action:          &a,
 	}
-	_, err := s.Add(task)
+	_, err = s.Add(task)
 	assert.NoError(t, err)
 	wait.Wait()
 	assert.Equal(t, "canceled", a.Status)
@@ -154,7 +165,10 @@ func TestTimeout(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose_runner.New("/tmp"), store.NewMemoryStore())
+	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	s := New(NewResources(4, 16*1024), compose_runner.New(dir), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -183,7 +197,10 @@ func TestCancel(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	s := New(NewResources(4, 16*1024), compose.New("/tmp"), store.NewMemoryStore())
+	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	s := New(NewResources(4, 16*1024), compose.New(dir), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.Start(ctx)
 	defer cancel()
@@ -202,7 +219,7 @@ func TestExec(t *testing.T) {
 		MaxExectionTime: 1 * time.Second,
 		Action:          &a,
 	}
-	_, err := s.Add(task)
+	_, err = s.Add(task)
 	assert.NoError(t, err)
 	wait.Wait()
 	assert.NotEqual(t, 0, a.ExitCode)
