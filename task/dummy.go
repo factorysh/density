@@ -105,7 +105,7 @@ func (da *DummyAction) Run(ctx context.Context, pwd string, environments map[str
 	}
 
 	if da.WithCommand {
-		cmd := exec.CommandContext(ctx, "sleep", "5")
+		cmd := exec.CommandContext(ctx, "sleep", "2")
 		_ = cmd.Run()
 		da.ExitCode = cmd.ProcessState.ExitCode()
 
