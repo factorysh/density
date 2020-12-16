@@ -20,6 +20,7 @@ type Scheduler struct {
 	lock      sync.RWMutex
 	events    chan interface{}
 	runner    Runner
+	Pubsub    *PubSub
 }
 
 type Runner interface {
@@ -32,6 +33,7 @@ func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 		tasks:     &JSONStore{store},
 		events:    make(chan interface{}),
 		runner:    runner,
+		Pubsub:    NewPubSub(),
 	}
 }
 
@@ -61,6 +63,10 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 		task.Status = _task.Canceled
 	}
 	s.events <- new(interface{})
+	s.Pubsub.Publish(Event{
+		Action: "added",
+		Id:     id,
+	})
 	return id, nil
 }
 
@@ -108,6 +114,10 @@ func (s *Scheduler) Start(ctx context.Context) {
 				chosen.Status = _task.Canceled
 				chosen.Mtime = time.Now()
 			}
+			s.Pubsub.Publish(Event{
+				Action: "running",
+				Id:     chosen.Id,
+			})
 			go func(ctx context.Context, task *_task.Task) {
 				defer task.Cancel()
 				err := s.runner.Up(ctx, task)
@@ -116,6 +126,10 @@ func (s *Scheduler) Start(ctx context.Context) {
 				}
 				task.Status = _task.Done
 				task.Mtime = time.Now()
+				s.Pubsub.Publish(Event{
+					Action: "done",
+					Id:     task.Id,
+				})
 				s.tasks.Put(task)
 				s.events <- new(interface{}) // a slot is now free, let's try to full it
 			}(ctx, chosen)

@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,8 +35,6 @@ func TestScheduler(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go s.Start(ctx)
-	wait := _task.NewWaiter()
-	wait.Add(1)
 	task := &_task.Task{
 		Owner:           "test",
 		Start:           time.Now(),
@@ -43,7 +42,6 @@ func TestScheduler(t *testing.T) {
 		Action: &_task.DummyAction{
 			Name: "Action A",
 			Wait: 10,
-			Wg:   wait,
 		},
 		CPU: 2,
 		RAM: 256,
@@ -51,6 +49,20 @@ func TestScheduler(t *testing.T) {
 	id, err := s.Add(task)
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, id)
+	wait := &sync.WaitGroup{}
+	wait.Add(1)
+	go func() {
+		ctx, cancel := context.WithCancel(context.TODO())
+		defer cancel()
+		events := s.Pubsub.Subscribe(ctx)
+		for {
+			event := <-events
+			if event.Id == id && event.Action == "done" {
+				wait.Done()
+				return
+			}
+		}
+	}()
 	list := s.List()
 	assert.Equal(t, 1, len(list))
 	filtered := s.Filter("test")
@@ -63,6 +75,7 @@ func TestScheduler(t *testing.T) {
 
 	wait.Add(2)
 	actions := make([]int, 0)
+	ids := make([]uuid.UUID, 0)
 	for _, task := range []*_task.Task{
 		{
 			Start:           time.Now(),
@@ -72,7 +85,6 @@ func TestScheduler(t *testing.T) {
 			Action: &_task.DummyAction{
 				Name: "Action B",
 				Wait: 400,
-				Wg:   wait,
 			},
 		},
 		{
@@ -83,13 +95,29 @@ func TestScheduler(t *testing.T) {
 			Action: &_task.DummyAction{
 				Name: "Action C",
 				Wait: 300,
-				Wg:   wait,
 			},
 		},
 	} {
-		_, err = s.Add(task)
+		id, err = s.Add(task)
 		assert.NoError(t, err)
+		ids = append(ids, id)
 	}
+	go func() {
+		ctx, cancel := context.WithCancel(context.TODO())
+		defer cancel()
+		events := s.Pubsub.Subscribe(ctx)
+		i := 2
+		for {
+			event := <-events
+			if event.Action == "done" {
+				wait.Done()
+				i--
+			}
+			if i == 0 {
+				return
+			}
+		}
+	}()
 	wait.Wait()
 	sort.Ints(actions)
 	// TODO: FIXME
