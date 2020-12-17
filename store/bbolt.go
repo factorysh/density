@@ -113,3 +113,8 @@ func (bs *BoltStore) ForEach(fn func(k, v []byte) error) error {
 	})
 	return nil
 }
+
+func (bs *BoltStore) DeleteWithClause(fn func(k, v []byte) bool) error {
+	// TODO
+	return nil
+}

@@ -38,6 +38,22 @@ func (m *MemoryStore) Delete(key []byte) error {
 	return nil
 }
 
+func (m *MemoryStore) DeleteWithClause(fn func(k, v []byte) bool) error {
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	todos := []string{}
+	for k, v := range m.kv {
+		if fn([]byte(k), v) {
+			todos = append(todos, k)
+		}
+	}
+	for _, k := range todos {
+		delete(m.kv, k)
+	}
+	return nil
+}
+
 func (m *MemoryStore) Length() int {
 	m.lock.RLock()
 	defer m.lock.RUnlock()

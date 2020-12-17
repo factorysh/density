@@ -7,4 +7,5 @@ type Store interface {
 	Delete([]byte) error
 	Length() int
 	ForEach(func(k, v []byte) error) error
+	DeleteWithClause(fn func(k, v []byte) bool) error
 }
