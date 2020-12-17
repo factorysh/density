@@ -1,4 +1,4 @@
-package compose
+package runner
 
 import (
 	"context"
@@ -8,16 +8,16 @@ import (
 	"github.com/factorysh/batch-scheduler/task"
 )
 
-type ComposeRunner struct {
+type Runner struct {
 	Home string
 }
 
-func New(home string) *ComposeRunner {
-	return &ComposeRunner{home}
+func New(home string) *Runner {
+	return &Runner{home}
 }
 
 // Up a Task
-func (c *ComposeRunner) Up(ctx context.Context, task *task.Task) error {
+func (c *Runner) Up(ctx context.Context, task *task.Task) error {
 	pwd := path.Join(c.Home, task.Id.String())
 	err := os.Mkdir(pwd, 0750)
 	if err != nil && os.IsNotExist(err) {
