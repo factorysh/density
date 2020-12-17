@@ -2,10 +2,10 @@ package pubsub
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 type Event struct {
@@ -47,8 +47,8 @@ func (p *PubSub) Subscribe(ctx context.Context) chan Event {
 }
 
 func (p *PubSub) Publish(evt Event) {
-	fmt.Println("publish", evt)
 	p.lock.Lock()
+	log.WithField("event", evt).WithField("subscribers", len(p.subscribers)).Info("publish")
 	defer p.lock.Unlock()
 	// Warning, chans are blocking
 	for _, c := range p.subscribers {
