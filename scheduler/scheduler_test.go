@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -32,32 +31,36 @@ func waitFor(ps *pubsub.PubSub, size int, clause func(evt pubsub.Event) bool) *s
 	wait := &sync.WaitGroup{}
 	wait.Add(size)
 
-	go func() {
+	go func(size int) {
 		ctx, cancel := context.WithCancel(context.TODO())
 		defer cancel()
 		events := ps.Subscribe(ctx)
 		for {
 			event := <-events
+			fmt.Println("wait for", event)
 			if clause(event) {
 				wait.Done()
 				size--
-			}
-			if size == 0 {
-				return
+				if size == 0 {
+					return
+				}
 			}
 		}
-	}()
+	}(size)
 	return wait
 }
 
 func TestScheduler(t *testing.T) {
-	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
+	dir, err := ioutil.TempDir(os.TempDir(), "scheduler-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 	s := New(NewResources(4, 16*1024), compose_runner.New(dir), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go s.Start(ctx)
+	wait := waitFor(s.Pubsub, 1, func(event pubsub.Event) bool {
+		return event.Action == "done"
+	})
 	task := &_task.Task{
 		Owner:           "test",
 		Start:           time.Now(),
@@ -72,23 +75,21 @@ func TestScheduler(t *testing.T) {
 	id, err := s.Add(task)
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, id)
-	wait := waitFor(s.Pubsub, 1, func(event pubsub.Event) bool {
-		return event.Id == id && event.Action == "done"
-	})
 	list := s.List()
-	assert.Equal(t, 1, len(list))
+	assert.Len(t, list, 1)
 	filtered := s.Filter("test")
-	assert.Equal(t, 1, len(filtered))
-	fmt.Println("id", id)
+	assert.Len(t, filtered, 1)
 	wait.Wait()
 	assert.Len(t, s.readyToGo(), 0)
+	filtered = s.Filter("test")
+	assert.Len(t, filtered, 1)
+	assert.Equal(t, _task.Done, filtered[0].Status)
 
 	// Second part
 
 	wait = waitFor(s.Pubsub, 2, func(event pubsub.Event) bool {
 		return event.Action == "done"
 	})
-	actions := make([]int, 0)
 	ids := make([]uuid.UUID, 0)
 	for _, task := range []*_task.Task{
 		{
@@ -117,11 +118,10 @@ func TestScheduler(t *testing.T) {
 		ids = append(ids, id)
 	}
 	wait.Wait()
-	sort.Ints(actions)
-	// TODO: FIXME
-	// assert.Equal(t, []int{1, 2}, actions)
+	assert.Equal(t, 3, s.Length())
 	flushed := s.Flush(0)
 	assert.Equal(t, 3, flushed)
+
 }
 
 func TestFlood(t *testing.T) {

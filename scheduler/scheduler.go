@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -226,10 +227,12 @@ func (s *Scheduler) Length() int {
 	return s.tasks.Length()
 }
 
+// Flush removes all done Tasks
 func (s *Scheduler) Flush(age time.Duration) int {
 	now := time.Now()
 	i := 0
 	s.tasks.ForEach(func(task *_task.Task) error {
+		fmt.Println(task.Status, task.Mtime)
 		if task.Status != _task.Running && task.Status != _task.Waiting && now.Sub(task.Mtime) > age {
 			s.tasks.Delete(task.Id)
 			i++
