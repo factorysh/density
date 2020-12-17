@@ -15,6 +15,7 @@ func TestStore(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.Remove(f.Name())
 	store, err := NewBoltStore(f.Name())
+	assert.NoError(t, err)
 	stores := []Store{NewMemoryStore(), store}
 	for _, m := range stores {
 		fmt.Println(m)
