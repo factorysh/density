@@ -121,7 +121,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 				Id:     chosen.Id,
 			})
 			go func(ctx context.Context, task *_task.Task) {
-				defer task.Cancel()
+				defer task.Cancel() // FIXME Why?!
 				err := s.runner.Up(ctx, task)
 				if err != nil {
 					l.Error(err)
@@ -137,7 +137,6 @@ func (s *Scheduler) Start(ctx context.Context) {
 						Id:     task.Id,
 					})
 				}
-
 				task.Mtime = time.Now()
 				s.tasks.Put(task)
 				s.events <- new(interface{}) // a slot is now free, let's try to full it
