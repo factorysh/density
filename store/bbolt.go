@@ -91,6 +91,15 @@ func (bs *BoltStore) Delete(key []byte) error {
 
 }
 
+func (bs *BoltStore) Length() int {
+	var l int
+	bs.Db.View(func(tx *bolt.Tx) error {
+		l = tx.Bucket(DefaultBucket).Stats().KeyN
+		return nil
+	})
+	return l
+}
+
 func (bs *BoltStore) ForEach(fn func(k, v []byte) error) error {
 	bs.Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(DefaultBucket)
