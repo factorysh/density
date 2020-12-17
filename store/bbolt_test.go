@@ -1,9 +1,6 @@
 package store
 
 import (
-	"io/ioutil"
-	"os"
-	"sort"
 	"sync"
 	"testing"
 
@@ -70,24 +67,4 @@ func TestDelete(t *testing.T) {
 	assert.Equal(t, "", string(v))
 
 	store.Db.Close()
-}
-
-func TestBBoltForEach(t *testing.T) {
-	f, err := ioutil.TempFile(os.TempDir(), "bolt-")
-	assert.NoError(t, err)
-	defer os.Remove(f.Name())
-	store, err := NewBoltStore(f.Name())
-	assert.NoError(t, err)
-	for _, name := range []string{"pim", "pam", "poum"} {
-		err = store.Put([]byte(name), []byte{})
-		assert.NoError(t, err)
-	}
-	names := make([]string, 0)
-	err = store.ForEach(func(k, v []byte) error {
-		names = append(names, string(k))
-		return nil
-	})
-	assert.NoError(t, err)
-	sort.Strings(names)
-	assert.Equal(t, []string{"pam", "pim", "poum"}, names)
 }

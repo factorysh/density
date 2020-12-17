@@ -71,8 +71,14 @@ func (bs *BoltStore) Get(key []byte) ([]byte, error) {
 
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return value, err
+	if len(value) == 0 {
+		return nil, nil
+	}
+	return value, nil
 }
 
 // Delete a value using it's key
