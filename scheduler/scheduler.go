@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/factorysh/batch-scheduler/pubsub"
 	_store "github.com/factorysh/batch-scheduler/store"
 	"github.com/factorysh/batch-scheduler/task"
 	_task "github.com/factorysh/batch-scheduler/task"
@@ -20,7 +21,7 @@ type Scheduler struct {
 	lock      sync.RWMutex
 	events    chan interface{}
 	runner    Runner
-	Pubsub    *PubSub
+	Pubsub    *pubsub.PubSub
 }
 
 type Runner interface {
@@ -33,7 +34,7 @@ func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 		tasks:     &JSONStore{store},
 		events:    make(chan interface{}),
 		runner:    runner,
-		Pubsub:    NewPubSub(),
+		Pubsub:    pubsub.NewPubSub(),
 	}
 }
 
@@ -63,7 +64,7 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 		task.Status = _task.Canceled
 	}
 	s.events <- new(interface{})
-	s.Pubsub.Publish(Event{
+	s.Pubsub.Publish(pubsub.Event{
 		Action: "added",
 		Id:     id,
 	})
@@ -114,7 +115,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 				chosen.Status = _task.Canceled
 				chosen.Mtime = time.Now()
 			}
-			s.Pubsub.Publish(Event{
+			s.Pubsub.Publish(pubsub.Event{
 				Action: "running",
 				Id:     chosen.Id,
 			})
@@ -126,7 +127,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 				}
 				task.Status = _task.Done
 				task.Mtime = time.Now()
-				s.Pubsub.Publish(Event{
+				s.Pubsub.Publish(pubsub.Event{
 					Action: "done",
 					Id:     task.Id,
 				})

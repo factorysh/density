@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/factorysh/batch-scheduler/pubsub"
 	"github.com/factorysh/batch-scheduler/runner/compose"
 	compose_runner "github.com/factorysh/batch-scheduler/runner/compose"
 	"github.com/factorysh/batch-scheduler/store"
@@ -27,7 +28,7 @@ func (d *DummyRunner) Up(ctx context.Context, _task *task.Task) error {
 	return _task.Action.Run(ctx, "/tmp/", nil)
 }
 
-func waitFor(ps *PubSub, size int, clause func(evt Event) bool) *sync.WaitGroup {
+func waitFor(ps *pubsub.PubSub, size int, clause func(evt pubsub.Event) bool) *sync.WaitGroup {
 	wait := &sync.WaitGroup{}
 	wait.Add(size)
 
@@ -71,7 +72,7 @@ func TestScheduler(t *testing.T) {
 	id, err := s.Add(task)
 	assert.NoError(t, err)
 	assert.NotEqual(t, uuid.Nil, id)
-	wait := waitFor(s.Pubsub, 1, func(event Event) bool {
+	wait := waitFor(s.Pubsub, 1, func(event pubsub.Event) bool {
 		return event.Id == id && event.Action == "done"
 	})
 	list := s.List()
@@ -84,7 +85,7 @@ func TestScheduler(t *testing.T) {
 
 	// Second part
 
-	wait = waitFor(s.Pubsub, 2, func(event Event) bool {
+	wait = waitFor(s.Pubsub, 2, func(event pubsub.Event) bool {
 		return event.Action == "done"
 	})
 	actions := make([]int, 0)
