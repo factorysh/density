@@ -27,7 +27,7 @@ func (da *DummyAction) Validate() error {
 // Run action interface implementation
 func (da *DummyAction) Run(ctx context.Context, pwd string, environments map[string]string) error {
 	// Print name
-	fmt.Println(da.Name)
+	fmt.Println("DummyAction :", da.Name)
 	// Sleep
 	time.Sleep(time.Duration(da.Wait) * time.Millisecond)
 
@@ -50,7 +50,6 @@ func (da *DummyAction) Run(ctx context.Context, pwd string, environments map[str
 		cmd := exec.CommandContext(ctx, "sleep", "2")
 		_ = cmd.Run()
 		da.ExitCode = cmd.ProcessState.ExitCode()
-
 	}
 
 	return nil
