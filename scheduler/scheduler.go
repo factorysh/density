@@ -121,6 +121,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 				Action: "running",
 				Id:     chosen.Id,
 			})
+			s.lock.Unlock()
 			go func(ctx context.Context, task *_task.Task) {
 				defer task.Cancel() // FIXME Why?!
 				err := s.runner.Up(ctx, task)
@@ -142,7 +143,6 @@ func (s *Scheduler) Start(ctx context.Context) {
 				s.tasks.Put(task)
 				s.events <- new(interface{}) // a slot is now free, let's try to full it
 			}(ctx, chosen)
-			s.lock.Unlock()
 		}
 	}
 }
