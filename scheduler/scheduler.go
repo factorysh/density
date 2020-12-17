@@ -108,6 +108,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}).Info()
 			chosen.Status = _task.Running
 			chosen.Mtime = time.Now()
+			s.tasks.Put(chosen)
 			ctx, cancel := context.WithTimeout(context.TODO(), chosen.MaxExectionTime)
 
 			chosen.Cancel = func() {
