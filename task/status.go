@@ -8,4 +8,5 @@ const (
 	Running  Status = 2
 	Done     Status = 3
 	Canceled Status = 4
+	Error    Status = 5
 )

@@ -12,11 +12,12 @@ func _() {
 	_ = x[Running-2]
 	_ = x[Done-3]
 	_ = x[Canceled-4]
+	_ = x[Error-5]
 }
 
-const _Status_name = "WaitingRunningDoneCanceled"
+const _Status_name = "WaitingRunningDoneCanceledError"
 
-var _Status_index = [...]uint8{0, 7, 14, 18, 26}
+var _Status_index = [...]uint8{0, 7, 14, 18, 26, 31}
 
 func (i Status) String() string {
 	i -= 1

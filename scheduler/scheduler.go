@@ -125,13 +125,20 @@ func (s *Scheduler) Start(ctx context.Context) {
 				err := s.runner.Up(ctx, task)
 				if err != nil {
 					l.Error(err)
+					task.Status = _task.Error
+					s.Pubsub.Publish(pubsub.Event{
+						Action: "error",
+						Id:     task.Id,
+					})
+				} else {
+					task.Status = _task.Done
+					s.Pubsub.Publish(pubsub.Event{
+						Action: "done",
+						Id:     task.Id,
+					})
 				}
-				task.Status = _task.Done
+
 				task.Mtime = time.Now()
-				s.Pubsub.Publish(pubsub.Event{
-					Action: "done",
-					Id:     task.Id,
-				})
 				s.tasks.Put(task)
 				s.events <- new(interface{}) // a slot is now free, let's try to full it
 			}(ctx, chosen)
