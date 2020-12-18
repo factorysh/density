@@ -246,5 +246,6 @@ func (s *Scheduler) Flush(age time.Duration) int {
 		}
 		return nil
 	})
+
 	return i
 }

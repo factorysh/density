@@ -69,3 +69,14 @@ func (j *JSONStore) ForEach(fn func(t *task.Task) error) error {
 	})
 	return nil
 }
+
+// DeleteWithClause batch delete
+func (j *JSONStore) DeleteWithClause(fn func(t *task.Task) bool) error {
+	return j.store.DeleteWithClause(func(k, v []byte) bool {
+		t, err := parseTask(v)
+		if err != nil {
+			panic(err)
+		}
+		return fn(t)
+	})
+}
