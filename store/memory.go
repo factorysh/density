@@ -1,6 +1,8 @@
 package store
 
-import "sync"
+import (
+	"sync"
+)
 
 type MemoryStore struct {
 	kv   map[string][]byte
@@ -39,7 +41,6 @@ func (m *MemoryStore) Delete(key []byte) error {
 }
 
 func (m *MemoryStore) DeleteWithClause(fn func(k, v []byte) bool) error {
-
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	todos := []string{}

@@ -115,6 +115,15 @@ func (bs *BoltStore) ForEach(fn func(k, v []byte) error) error {
 }
 
 func (bs *BoltStore) DeleteWithClause(fn func(k, v []byte) bool) error {
-	// TODO
+	bs.Db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(DefaultBucket)
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			if fn(k, v) {
+				c.Delete()
+			}
+		}
+		return nil
+	})
 	return nil
 }

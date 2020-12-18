@@ -45,5 +45,11 @@ func TestStore(t *testing.T) {
 		assert.NoError(t, err)
 		sort.Strings(names)
 		assert.Equal(t, []string{"pam", "pim", "poum"}, names)
+		err = m.DeleteWithClause(func(k, v []byte) bool {
+			fmt.Println("clause:", string(k))
+			return string(k) == "poum"
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, 2, m.Length())
 	}
 }
