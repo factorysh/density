@@ -129,8 +129,10 @@ func TestFlood(t *testing.T) {
 		Counter: 0,
 	}
 	size := 30
+	wait := waitFor(s.Pubsub, size, func(event pubsub.Event) bool {
+		return event.Action == "done"
+	})
 	for i := 0; i < size; i++ {
-		//wait.Add(1)
 		s.Add(&_task.Task{
 			Start:           time.Now(),
 			CPU:             rand.Intn(4) + 1,
@@ -139,9 +141,7 @@ func TestFlood(t *testing.T) {
 			Action:          &a,
 		})
 	}
-	//wait.Wait()
-	fmt.Println(a.Counter)
-	assert.Equal(t, a.Counter, int64(size))
+	wait.Wait()
 }
 
 func TestTimeout(t *testing.T) {
