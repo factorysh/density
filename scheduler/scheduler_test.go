@@ -237,5 +237,5 @@ func TestExec(t *testing.T) {
 	_, err = s.Add(task)
 	assert.NoError(t, err)
 	//wait.Wait()
-	assert.NotEqual(t, 0, a.ExitCode)
+	assert.Equal(t, 0, a.ExitCode)
 }
