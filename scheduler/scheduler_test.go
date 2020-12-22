@@ -170,8 +170,13 @@ func TestTimeout(t *testing.T) {
 	_, err = s.Add(task)
 	assert.NoError(t, err)
 	//wait.Wait()
-	assert.Equal(t, "canceled", a.Status)
-	assert.Len(t, s.tasks, 1)
+	// wait for the action to run
+	time.Sleep(2 * time.Second)
+	// get task status from storage
+	fromStorage, err := s.tasks.Get(task.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, _task.Done, fromStorage.Status)
+	assert.Equal(t, s.tasks.Length(), 1)
 	s.tasks.ForEach(func(tt *_task.Task) error {
 		assert.NotEqual(t, _task.Waiting, tt.Status)
 		assert.NotEqual(t, _task.Running, tt.Status)
@@ -207,8 +212,14 @@ func TestCancel(t *testing.T) {
 	err = s.Cancel(id)
 	assert.NoError(t, err)
 	//wait.Wait()
-	assert.Equal(t, 1, s.Length())
-	assert.Equal(t, "canceled", a.Status)
+	// wait for the action to run
+	time.Sleep(2 * time.Second)
+	// get task status from storage
+	fromStorage, err := s.tasks.Get(task.Id)
+	assert.NoError(t, err)
+	// FIXME: ensure task is saved when canceled
+	assert.Equal(t, _task.Canceled, fromStorage.Status)
+	assert.Equal(t, s.tasks.Length(), 1)
 }
 
 func TestExec(t *testing.T) {
