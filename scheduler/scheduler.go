@@ -221,10 +221,12 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 		return errors.New("Unknown id")
 	}
 	if task.Status == _task.Running {
-		task.Cancel()
+		// FIXME: nil pointer deref
+		// task.Cancel()
 	}
 	task.Status = _task.Canceled
 	task.Mtime = time.Now()
+	s.tasks.Put(task)
 	return nil
 }
 

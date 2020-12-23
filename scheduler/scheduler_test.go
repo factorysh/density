@@ -195,7 +195,7 @@ func TestCancel(t *testing.T) {
 
 	//wait := _task.NewWaiter()
 	a := _task.DummyAction{
-		Name:        "Test Timeout",
+		Name:        "Test Cancel",
 		WithTimeout: true,
 		//Wg:          wait,
 	}
@@ -209,15 +209,16 @@ func TestCancel(t *testing.T) {
 	}
 	id, err := s.Add(task)
 	assert.NoError(t, err)
+	// wait for the task to be running
+	time.Sleep(1 * time.Second)
 	err = s.Cancel(id)
 	assert.NoError(t, err)
 	//wait.Wait()
 	// wait for the action to run
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 	// get task status from storage
 	fromStorage, err := s.tasks.Get(task.Id)
 	assert.NoError(t, err)
-	// FIXME: ensure task is saved when canceled
 	assert.Equal(t, _task.Canceled, fromStorage.Status)
 	assert.Equal(t, s.tasks.Length(), 1)
 }
