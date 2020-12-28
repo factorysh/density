@@ -1,7 +1,7 @@
 package compose
 
 import (
-	"context"
+	"fmt"
 	"testing"
 
 	"github.com/tj/assert"
@@ -76,8 +76,10 @@ func TestRunCompose(t *testing.T) {
 			_, ok := s["hello"]
 			assert.True(t, ok)
 
-			ctx := context.Background()
-			err = c.Run(ctx, "/tmp", nil)
+			k, err := c.Up("/tmp", nil)
+			assert.NoError(t, err)
+			fmt.Println(k)
+			err = c.Down(k)
 			assert.NoError(t, err)
 		})
 	}
