@@ -2,6 +2,7 @@ package compose
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,10 +11,45 @@ import (
 	"path"
 	"reflect"
 
+	"github.com/docker/docker/client"
+	"github.com/factorysh/batch-scheduler/task"
 	"gopkg.in/yaml.v3"
 )
 
 var composeIsHere bool = false
+
+// DockerRun implements task.Run
+type DockerRun struct {
+	Path string `json:"path"`
+	Id   string `json:"id"`
+}
+
+func (d *DockerRun) Down() error {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	cmd := exec.Command("docker-compose", "down")
+	cmd.Dir = d.Path
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	fmt.Println(stdout.String())
+	fmt.Println(stderr.String())
+	return err
+}
+
+func (d *DockerRun) Wait(ctx context.Context) error {
+	cli, err := client.NewEnvClient() // FIXME use a singleton
+	if err != nil {
+		return err
+	}
+	_, errC := cli.ContainerWait(ctx, d.Id, "")
+	if err := <-errC; err != nil {
+		return err
+	}
+	return nil
+}
 
 // EnsureBin will ensure that docker-compose is found in $PATH
 func EnsureBin() error {
@@ -110,8 +146,8 @@ func (c Compose) guessMainContainer() (string, error) {
 	return "", errors.New("Multiple services handling is not yet implemented")
 }
 
-// Run compose action
-func (c Compose) Up(workingDirectory string, environments map[string]string) (interface{}, error) {
+// Up compose action
+func (c Compose) Up(workingDirectory string, environments map[string]string) (task.Run, error) {
 	err := lazyEnsureBin()
 	if err != nil {
 		return nil, err
@@ -173,35 +209,10 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (in
 		return nil, err
 	}
 
-	return DockerRunInfo{
+	return &DockerRun{
 		Path: workingDirectory,
 		Id:   stdout.String(),
 	}, err
-}
-
-type DockerRunInfo struct {
-	Path string `json:"path"`
-	Id   string `json:"id"`
-}
-
-func (c *Compose) Down(key interface{}) error {
-	var info DockerRunInfo
-	info, ok := key.(DockerRunInfo)
-	if !ok {
-		return fmt.Errorf("key is not a DockerRunInfo : %p", key)
-	}
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	cmd := exec.Command("docker-compose", "down")
-	cmd.Dir = info.Path
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	fmt.Println(stdout.String())
-	fmt.Println(stderr.String())
-	return err
 }
 
 // Version check if version is set in docker compose file

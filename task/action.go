@@ -11,3 +11,8 @@ type Action interface {
 	// Run with a context, a working directory and environments variables.
 	Run(ctx context.Context, pwd string, environments map[string]string) error
 }
+
+type Run interface {
+	Down() error
+	Wait(context.Context) error
+}
