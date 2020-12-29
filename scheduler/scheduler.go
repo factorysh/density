@@ -25,7 +25,7 @@ type Scheduler struct {
 }
 
 type Runner interface {
-	Up(context.Context, *task.Task) error
+	Up(*task.Task) (task.Run, error)
 }
 
 func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
@@ -73,6 +73,7 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 
 // Start is the main loop
 func (s *Scheduler) Start(ctx context.Context) {
+	// FIXME, find all detached running tasks in s.tasks
 	for {
 		select {
 		case <-s.events:
@@ -105,43 +106,41 @@ func (s *Scheduler) Start(ctx context.Context) {
 				"ram":     s.resources.ram,
 				"process": s.resources.processes,
 			}).Info()
-			chosen.Status = _task.Running
-			chosen.Mtime = time.Now()
+			run, err := s.runner.Up(chosen)
+			if err != nil {
+				chosen.Status = _task.Error
+				cancelResources()
+				l.WithError(err).Error()
+			} else {
+				chosen.Status = _task.Running
+				chosen.Run = run
+			}
 			s.tasks.Put(chosen)
 			ctx, cancel := context.WithTimeout(context.TODO(), chosen.MaxExectionTime)
 
-			chosen.Cancel = func() {
+			cleanup := func() {
 				cancel()
 				cancelResources()
-				chosen.Status = _task.Canceled
-				chosen.Mtime = time.Now()
 			}
 			s.Pubsub.Publish(pubsub.Event{
-				Action: "running",
+				Action: chosen.Status.String(),
 				Id:     chosen.Id,
 			})
 			s.lock.Unlock()
-			go func(ctx context.Context, task *_task.Task) {
-				defer task.Cancel() // FIXME Why?!
-				err := s.runner.Up(ctx, task)
+			go func(ctx context.Context, task *task.Task, run _task.Run, cleanup func()) {
+				defer cleanup()
+				status, err := run.Wait(ctx)
 				if err != nil {
-					l.Error(err)
-					task.Status = _task.Error
-					s.Pubsub.Publish(pubsub.Event{
-						Action: "error",
-						Id:     task.Id,
-					})
-				} else {
-					task.Status = _task.Done
-					s.Pubsub.Publish(pubsub.Event{
-						Action: "done",
-						Id:     task.Id,
-					})
+					l.WithError(err).Error()
 				}
-				task.Mtime = time.Now()
+				task.Status = status
+				s.Pubsub.Publish(pubsub.Event{
+					Action: task.Status.String(),
+					Id:     task.Id,
+				})
 				s.tasks.Put(task)
 				s.events <- new(interface{}) // a slot is now free, let's try to full it
-			}(ctx, chosen)
+			}(ctx, chosen, run, cleanup)
 		}
 	}
 }

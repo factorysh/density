@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -16,4 +17,16 @@ func TestDummyJson(t *testing.T) {
 	var a DummyAction
 	err = json.Unmarshal(raw, &a)
 	assert.NoError(t, err)
+}
+
+func TestDummy(t *testing.T) {
+	d := &DummyAction{
+		Name: "bob",
+	}
+	run, err := d.Up("/tmp", nil)
+	assert.NoError(t, err)
+	ctx := context.TODO()
+	status, err := run.Wait(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, Done, status)
 }

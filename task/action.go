@@ -9,5 +9,10 @@ type Action interface {
 	// Validate if attributes are correct
 	Validate() error
 	// Run with a context, a working directory and environments variables.
-	Run(ctx context.Context, pwd string, environments map[string]string) error
+	Up(pwd string, environments map[string]string) (Run, error)
+}
+
+type Run interface {
+	Down() error
+	Wait(context.Context) (Status, error)
 }
