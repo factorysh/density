@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/factorysh/batch-scheduler/task"
 	"github.com/tj/assert"
@@ -20,6 +21,13 @@ services:
     command: "echo world"
 `
 
+const sleepCompose = `
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "sleep 30"
+`
 const invalidCompose = `
 version: '3'
 services:
@@ -78,4 +86,19 @@ func TestRunCompose(t *testing.T) {
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, task.Done, status)
+}
+
+func TestRunComposeTimeout(t *testing.T) {
+	var c Compose
+	err := yaml.Unmarshal([]byte(sleepCompose), &c)
+	assert.NoError(t, err)
+	dir, err := ioutil.TempDir(os.TempDir(), "compose-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	run, err := c.Up(dir, nil)
+	assert.NoError(t, err)
+	ctx, _ := context.WithTimeout(context.TODO(), time.Second)
+	status, err := run.Wait(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, task.Timeout, status)
 }
