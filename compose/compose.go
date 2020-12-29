@@ -218,7 +218,8 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (ta
 	fmt.Println(cmd.ProcessState.ExitCode())
 
 	// FIXME, use docker API, not the cli
-	id := fmt.Sprintf("%s_%s_1", strings.TrimLeft(workingDirectory, "/"), main)
+	dir := strings.Split(workingDirectory, "/")
+	id := fmt.Sprintf("%s_%s_1", dir[len(dir)-1], main)
 	fmt.Println(id)
 	cmd = exec.Command("docker", "inspect", "--format", "{{ .Id }}", id)
 	stdout.Reset()
