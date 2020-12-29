@@ -111,11 +111,13 @@ func (s *Scheduler) Start(ctx context.Context) {
 				chosen.Status = _task.Error
 				cancelResources()
 				l.WithError(err).Error()
-			} else {
-				chosen.Status = _task.Running
-				chosen.Run = run
+				s.tasks.Put(chosen)
+				continue
 			}
+			chosen.Status = _task.Running
+			chosen.Run = run
 			s.tasks.Put(chosen)
+
 			ctx, cancel := context.WithTimeout(context.TODO(), chosen.MaxExectionTime)
 
 			cleanup := func() {
