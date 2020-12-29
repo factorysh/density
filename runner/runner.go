@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"context"
 	"os"
 	"path"
 
@@ -17,14 +16,14 @@ func New(home string) *Runner {
 }
 
 // Up a Task
-func (c *Runner) Up(ctx context.Context, task *task.Task) error {
+func (c *Runner) Up(task *task.Task) (task.Run, error) {
 	pwd := path.Join(c.Home, task.Id.String())
 	err := os.Mkdir(pwd, 0750)
 	if err != nil && os.IsNotExist(err) {
-		return err
+		return nil, err
 	}
 	env := map[string]string{
 		"BASH_HELLO": "World",
 	}
-	return task.Action.Run(ctx, pwd, env)
+	return task.Action.Up(pwd, env)
 }

@@ -25,6 +25,7 @@ type Task struct {
 	Every           time.Duration      `json:"every"`              // Periodic execution. Exclusive with Cron
 	Cron            string             `json:"cron"`               // Cron definition. Exclusive with Every
 	resourceCancel  context.CancelFunc `json:"-"`
+	Run             Run                `json:"run"`
 }
 
 func (t *Task) UnmarshalJSON(b []byte) error {

@@ -3,6 +3,7 @@ package scheduler
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/factorysh/batch-scheduler/store"
 	"github.com/factorysh/batch-scheduler/task"
@@ -40,6 +41,7 @@ func (j *JSONStore) Put(t *task.Task) error {
 	if t.Id == uuid.Nil {
 		return errors.New("Task wihtout id")
 	}
+	t.Mtime = time.Now()
 	value, err := json.Marshal(t)
 	if err != nil {
 		return err
