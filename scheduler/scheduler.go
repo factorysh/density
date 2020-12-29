@@ -129,13 +129,11 @@ func (s *Scheduler) Start(ctx context.Context) {
 			s.lock.Unlock()
 			go func(ctx context.Context, task *task.Task, run _task.Run, cleanup func()) {
 				defer cleanup()
-				err := run.Wait(ctx)
+				status, err := run.Wait(ctx)
 				if err != nil {
 					l.WithError(err).Error()
-					task.Status = _task.Error
-				} else {
-					task.Status = _task.Done
 				}
+				task.Status = status
 				s.Pubsub.Publish(pubsub.Event{
 					Action: task.Status.String(),
 					Id:     task.Id,

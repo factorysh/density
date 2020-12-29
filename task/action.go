@@ -14,5 +14,5 @@ type Action interface {
 
 type Run interface {
 	Down() error
-	Wait(context.Context) error
+	Wait(context.Context) (Status, error)
 }

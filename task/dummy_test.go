@@ -26,7 +26,7 @@ func TestDummy(t *testing.T) {
 	run, err := d.Up("/tmp", nil)
 	assert.NoError(t, err)
 	ctx := context.TODO()
-	err = run.Wait(ctx)
+	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, "done", d.Status)
+	assert.Equal(t, Done, status)
 }

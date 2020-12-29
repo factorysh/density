@@ -39,16 +39,27 @@ func (d *DockerRun) Down() error {
 	return err
 }
 
-func (d *DockerRun) Wait(ctx context.Context) error {
+func (d *DockerRun) Wait(ctx context.Context) (task.Status, error) {
 	cli, err := client.NewEnvClient() // FIXME use a singleton
 	if err != nil {
-		return err
+		return task.Error, err
 	}
 	_, errC := cli.ContainerWait(ctx, d.Id, "")
+	// FIXME if timeout, kill the container
 	if err := <-errC; err != nil {
-		return err
+		return task.Error, err
 	}
-	return nil
+	inspect, err := cli.ContainerInspect(context.TODO(), d.Id)
+	if err != nil {
+		return task.Error, err
+	}
+	status := task.Error
+	if inspect.State.Status == "exited" {
+		if inspect.State.ExitCode == 0 {
+			status = task.Done
+		}
+	}
+	return status, nil
 }
 
 // EnsureBin will ensure that docker-compose is found in $PATH
