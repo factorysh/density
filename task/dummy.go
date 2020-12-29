@@ -34,8 +34,14 @@ func (r *DummyRun) Wait(ctx context.Context) (Status, error) {
 		fmt.Println("done")
 		status = Done
 	case <-ctx.Done():
-		fmt.Println("canceled")
-		status = Canceled
+		switch ctx.Err() {
+		case context.Canceled:
+			fmt.Println("canceled")
+			status = Canceled
+		case context.DeadlineExceeded:
+			fmt.Println("timeout")
+			status = Timeout
+		}
 	}
 
 	return status, nil
