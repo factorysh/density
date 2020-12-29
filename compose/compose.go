@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path"
 	"reflect"
+	"strings"
 
 	"github.com/docker/docker/client"
 	"github.com/factorysh/batch-scheduler/task"
@@ -44,11 +45,19 @@ func (d *DockerRun) Wait(ctx context.Context) (task.Status, error) {
 	if err != nil {
 		return task.Error, err
 	}
-	_, errC := cli.ContainerWait(ctx, d.Id, "")
-	// FIXME if timeout, kill the container
-	if err := <-errC; err != nil {
-		return task.Error, err
+	waitC, errC := cli.ContainerWait(ctx, d.Id, "")
+	loop := true
+	for loop {
+		select {
+		case <-waitC: // FIXME exitcode is get later
+			loop = false
+		case err := <-errC:
+			if err != nil {
+				return task.Error, err
+			}
+		}
 	}
+	// FIXME if timeout, kill the container
 	inspect, err := cli.ContainerInspect(context.TODO(), d.Id)
 	if err != nil {
 		return task.Error, err
@@ -206,15 +215,19 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (ta
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(cmd.ProcessState.ExitCode())
 
 	// FIXME, use docker API, not the cli
-	cmd = exec.Command("docker", "inspect", "--format", "{{ .Id }}", fmt.Sprintf("%s_%s_1", workingDirectory, main))
+	id := fmt.Sprintf("%s_%s_1", strings.TrimLeft(workingDirectory, "/"), main)
+	fmt.Println(id)
+	cmd = exec.Command("docker", "inspect", "--format", "{{ .Id }}", id)
 	stdout.Reset()
 	stderr.Reset()
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err = cmd.Run()
-	fmt.Println(stdout.String())
+	out := stdout.String()
+	fmt.Println(out)
 	fmt.Println(stderr.String())
 	if err != nil {
 		return nil, err
@@ -222,7 +235,7 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (ta
 
 	return &DockerRun{
 		Path: workingDirectory,
-		Id:   stdout.String(),
+		Id:   strings.Trim(out, "\n "),
 	}, err
 }
 

@@ -1,8 +1,11 @@
 package compose
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
+	"github.com/factorysh/batch-scheduler/task"
 	"github.com/tj/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -77,8 +80,11 @@ func TestRunCompose(t *testing.T) {
 
 			run, err := c.Up("/tmp", nil)
 			assert.NoError(t, err)
-			err = run.Down()
+			fmt.Println(run)
+			ctx := context.TODO()
+			status, err := run.Wait(ctx)
 			assert.NoError(t, err)
+			assert.Equal(t, task.Done, status)
 		})
 	}
 }
