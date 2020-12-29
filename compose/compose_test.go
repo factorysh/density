@@ -102,3 +102,22 @@ func TestRunComposeTimeout(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, task.Timeout, status)
 }
+
+func TestRunComposeCancel(t *testing.T) {
+	var c Compose
+	err := yaml.Unmarshal([]byte(sleepCompose), &c)
+	assert.NoError(t, err)
+	dir, err := ioutil.TempDir(os.TempDir(), "compose-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	run, err := c.Up(dir, nil)
+	assert.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.TODO())
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+	}()
+	status, err := run.Wait(ctx)
+	assert.NoError(t, err)
+	assert.Equal(t, task.Canceled, status)
+}
