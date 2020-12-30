@@ -8,20 +8,21 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[Waiting-1]
-	_ = x[Running-2]
-	_ = x[Done-3]
+	_ = x[Waiting-0]
+	_ = x[Running-1]
+	_ = x[Done-2]
+	_ = x[Timeout-3]
 	_ = x[Canceled-4]
+	_ = x[Error-5]
 }
 
-const _Status_name = "WaitingRunningDoneCanceled"
+const _Status_name = "WaitingRunningDoneTimeoutCanceledError"
 
-var _Status_index = [...]uint8{0, 7, 14, 18, 26}
+var _Status_index = [...]uint8{0, 7, 14, 18, 25, 33, 38}
 
 func (i Status) String() string {
-	i -= 1
 	if i < 0 || i >= Status(len(_Status_index)-1) {
-		return "Status(" + strconv.FormatInt(int64(i+1), 10) + ")"
+		return "Status(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
 	return _Status_name[_Status_index[i]:_Status_index[i+1]]
 }

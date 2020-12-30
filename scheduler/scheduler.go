@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/factorysh/batch-scheduler/pubsub"
+	_store "github.com/factorysh/batch-scheduler/store"
 	"github.com/factorysh/batch-scheduler/task"
 	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/google/uuid"
@@ -15,23 +17,24 @@ import (
 
 type Scheduler struct {
 	resources *Resources
-	tasks     map[uuid.UUID]*_task.Task
+	tasks     *JSONStore
 	lock      sync.RWMutex
 	events    chan interface{}
 	runner    Runner
+	Pubsub    *pubsub.PubSub
 }
 
 type Runner interface {
-	Up(context.Context, *task.Task) error
+	Up(*task.Task) (task.Run, error)
 }
 
-func New(resources *Resources, runner Runner) *Scheduler {
+func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 	return &Scheduler{
 		resources: resources,
-		tasks:     make(map[uuid.UUID]*_task.Task),
-		lock:      sync.RWMutex{},
+		tasks:     &JSONStore{store},
 		events:    make(chan interface{}),
 		runner:    runner,
+		Pubsub:    pubsub.NewPubSub(),
 	}
 }
 
@@ -53,23 +56,29 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	task.Id = id
 	task.Status = _task.Waiting
 	task.Mtime = time.Now()
-	s.lock.Lock()
-	s.tasks[task.Id] = task
-	s.lock.Unlock()
+	err = s.tasks.Put(task)
+	if err != nil {
+		return uuid.Nil, err
+	}
 	task.Cancel = func() {
 		task.Status = _task.Canceled
 	}
 	s.events <- new(interface{})
+	s.Pubsub.Publish(pubsub.Event{
+		Action: "added",
+		Id:     id,
+	})
 	return id, nil
 }
 
 // Start is the main loop
 func (s *Scheduler) Start(ctx context.Context) {
+	// FIXME, find all detached running tasks in s.tasks
 	for {
 		select {
 		case <-s.events:
 		}
-		l := log.WithField("tasks", len(s.tasks))
+		l := log.WithField("tasks", s.tasks.Length())
 		todos := s.readyToGo()
 		l = l.WithField("todos", len(todos))
 		if len(todos) == 0 { // nothing is ready  just wait
@@ -97,58 +106,72 @@ func (s *Scheduler) Start(ctx context.Context) {
 				"ram":     s.resources.ram,
 				"process": s.resources.processes,
 			}).Info()
+			run, err := s.runner.Up(chosen)
+			if err != nil {
+				chosen.Status = _task.Error
+				cancelResources()
+				l.WithError(err).Error()
+				s.tasks.Put(chosen)
+				continue
+			}
 			chosen.Status = _task.Running
-			chosen.Mtime = time.Now()
+			chosen.Run = run
+			s.tasks.Put(chosen)
+
 			ctx, cancel := context.WithTimeout(context.TODO(), chosen.MaxExectionTime)
 
-			chosen.Cancel = func() {
+			cleanup := func() {
 				cancel()
 				cancelResources()
-				chosen.Status = _task.Canceled
-				chosen.Mtime = time.Now()
 			}
-			go func(ctx context.Context, task *_task.Task) {
-				defer task.Cancel()
-				err := s.runner.Up(ctx, task)
-				if err != nil {
-					l.Error(err)
-				}
-				task.Status = _task.Done
-				task.Mtime = time.Now()
-				s.events <- new(interface{}) // a slot is now free, let's try to full it
-			}(ctx, chosen)
+			s.Pubsub.Publish(pubsub.Event{
+				Action: chosen.Status.String(),
+				Id:     chosen.Id,
+			})
 			s.lock.Unlock()
+			go func(ctx context.Context, task *task.Task, run _task.Run, cleanup func()) {
+				defer cleanup()
+				status, err := run.Wait(ctx)
+				if err != nil {
+					l.WithError(err).Error()
+				}
+				task.Status = status
+				s.Pubsub.Publish(pubsub.Event{
+					Action: task.Status.String(),
+					Id:     task.Id,
+				})
+				s.tasks.Put(task)
+				s.events <- new(interface{}) // a slot is now free, let's try to full it
+			}(ctx, chosen, run, cleanup)
 		}
 	}
 }
 
 // List all the tasks associated with this scheduler
 func (s *Scheduler) List() []*_task.Task {
-	tasks := []*_task.Task{}
+	tasks := make([]*_task.Task, 0)
 
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	for _, val := range s.tasks {
-		tasks = append(tasks, val)
-	}
+	s.tasks.ForEach(func(t *_task.Task) error {
+		tasks = append(tasks, t)
+		return nil
+	})
 
 	return tasks
-
 }
 
 // Filter tasks for a specific owner
 func (s *Scheduler) Filter(owner string) []*_task.Task {
-	tasks := []*_task.Task{}
+	tasks := make([]*_task.Task, 0)
 
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	for _, val := range s.tasks {
-		if val.Owner == owner {
-			tasks = append(tasks, val)
+	s.tasks.ForEach(func(t *_task.Task) error {
+		if t.Owner == owner {
+			tasks = append(tasks, t)
 		}
-	}
+		return nil
+	})
 
 	return tasks
 }
@@ -158,28 +181,30 @@ func (s *Scheduler) readyToGo() []*_task.Task {
 	tasks := make(_task.TaskByKarma, 0)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	for _, task := range s.tasks {
+	s.tasks.ForEach(func(task *_task.Task) error {
 		// enough CPU, enough RAM, Start date is okay
 		if task.Start.Before(now) && task.Status == _task.Waiting && s.resources.IsDoable(task.CPU, task.RAM) {
 			tasks = append(tasks, task)
 		}
-	}
+		return nil
+	})
 	sort.Sort(tasks)
 	return tasks
 }
 
 func (s *Scheduler) next() *_task.Task {
-	if len(s.tasks) == 0 {
+	if s.tasks.Length() == 0 {
 		return nil
 	}
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	tasks := make(_task.TaskByStart, 0)
-	for _, task := range s.tasks {
+	s.tasks.ForEach(func(task *_task.Task) error {
 		if task.Status == _task.Waiting {
 			tasks = append(tasks, task)
 		}
-	}
+		return nil
+	})
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -189,10 +214,16 @@ func (s *Scheduler) next() *_task.Task {
 
 // Cancel a task
 func (s *Scheduler) Cancel(id uuid.UUID) error {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	task, ok := s.tasks[id]
-	if !ok {
+	task, err := s.tasks.Get(id)
+	// TODO: find a way to generate a Cancel method when getting the task from
+	// the memory store
+	task.Cancel = func() {
+		task.Status = _task.Canceled
+	}
+	if err != nil {
+		return err
+	}
+	if task == nil {
 		return errors.New("Unknown id")
 	}
 	if task.Status == _task.Running {
@@ -200,26 +231,26 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 	}
 	task.Status = _task.Canceled
 	task.Mtime = time.Now()
+	s.tasks.Put(task)
 	return nil
 }
 
 // Length returns the number of Task
 func (s *Scheduler) Length() int {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	return len(s.tasks)
+	return s.tasks.Length()
 }
 
+// Flush removes all done Tasks
 func (s *Scheduler) Flush(age time.Duration) int {
-	s.lock.Lock()
-	defer s.lock.Unlock()
 	now := time.Now()
 	i := 0
-	for id, task := range s.tasks {
+	s.tasks.DeleteWithClause(func(task *_task.Task) bool {
 		if task.Status != _task.Running && task.Status != _task.Waiting && now.Sub(task.Mtime) > age {
-			delete(s.tasks, id)
 			i++
+			return true
 		}
-	}
+		return false
+	})
+
 	return i
 }

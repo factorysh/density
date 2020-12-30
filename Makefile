@@ -17,9 +17,15 @@ run:
 
 test:
 	go test -cover -timeout 30s \
-	github.com/factorysh/batch-scheduler/scheduler
+	github.com/factorysh/batch-scheduler/store
 	go test -cover -timeout 30s \
 	github.com/factorysh/batch-scheduler/compose
+	go test -cover -timeout 30s \
+	github.com/factorysh/batch-scheduler/task
+	go test -cover -timeout 30s \
+	github.com/factorysh/batch-scheduler/pubsub
+	go test -cover -timeout 30s \
+	github.com/factorysh/batch-scheduler/scheduler
 
 generate:
 	go generate ./task
