@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/factorysh/batch-scheduler/task"
-	"github.com/tj/assert"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 

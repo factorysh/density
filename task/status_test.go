@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tj/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStatusJSON(t *testing.T) {
