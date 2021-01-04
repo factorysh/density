@@ -68,13 +68,13 @@ func (d *DockerRun) Wait(ctx context.Context) (task.Status, error) {
 		}
 	}
 	if status != 0 {
+		// FIXME `docker-compose down`
 		err = cli.ContainerKill(context.TODO(), d.Id, "KILL")
 		if err != nil {
 			return task.Error, err
 		}
 		return status, nil
 	}
-	// FIXME if timeout, kill the container
 	inspect, err := cli.ContainerInspect(context.TODO(), d.Id)
 	if err != nil {
 		return task.Error, err
