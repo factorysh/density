@@ -289,3 +289,36 @@ func (c Compose) Services() (map[string]interface{}, error) {
 	}
 	return r, nil
 }
+
+// ServiceGraph represents a map of services to dependencies
+type ServiceGraph map[string]([]string)
+
+// NewServiceGraph generates a graph of deps from a compose description
+func (c Compose) NewServiceGraph() (*ServiceGraph, error) {
+	// fetch all services
+	services, err := c.Services()
+	if err != nil {
+		return nil, err
+	}
+
+	// init graph
+	graph := make(ServiceGraph)
+
+	// range over all services and populate the graph
+	for service, value := range services {
+		data, ok := value.(map[string]interface{})
+		fmt.Println(data)
+		if !ok {
+			continue
+		}
+
+		deps, ok := data["depends_on"].([]string)
+		if !ok {
+			continue
+		}
+
+		graph[service] = deps
+	}
+
+	return &graph, nil
+}

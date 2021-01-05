@@ -35,6 +35,20 @@ services:
     command: "echo world"
 `
 
+const withDependsCompose = `
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "echo world"
+    depends_on:
+      - dep
+
+  dep:
+    image: "busybox:latest"
+    command: "echo dep"
+`
+
 func TestValidate(t *testing.T) {
 	tests := []struct {
 		input []byte
@@ -120,4 +134,13 @@ func TestRunComposeCancel(t *testing.T) {
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, task.Canceled, status)
+}
+
+func TestNewServiceGraph(t *testing.T) {
+	var c Compose
+	err := yaml.Unmarshal([]byte(withDependsCompose), &c)
+	assert.NoError(t, err)
+	graph, err := c.NewServiceGraph()
+	assert.NoError(t, err)
+	fmt.Println(graph)
 }
