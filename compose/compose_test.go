@@ -19,6 +19,8 @@ services:
   hello:
     image: "busybox:latest"
     command: "echo world"
+x-batch:
+  x-test: "value"
 `
 
 const sleepCompose = `
@@ -64,7 +66,7 @@ func TestValidate(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		var c Compose
+		c := NewCompose()
 		err := yaml.Unmarshal(tc.input, &c)
 		assert.NoError(t, err)
 		err = c.Validate()
@@ -77,17 +79,13 @@ func TestValidate(t *testing.T) {
 }
 
 func TestRunCompose(t *testing.T) {
-	var c Compose
+	c := NewCompose()
 	err := yaml.Unmarshal([]byte(validCompose), &c)
 	assert.NoError(t, err)
 
-	v, err := c.Version()
-	assert.NoError(t, err)
-	assert.Equal(t, "3", v)
+	assert.Equal(t, "3", c.Version)
 
-	s, err := c.Services()
-	assert.NoError(t, err)
-	_, ok := s["hello"]
+	_, ok := c.Services["hello"]
 	assert.True(t, ok)
 
 	dir, err := ioutil.TempDir(os.TempDir(), "compose-")
@@ -103,7 +101,7 @@ func TestRunCompose(t *testing.T) {
 }
 
 func TestRunComposeTimeout(t *testing.T) {
-	var c Compose
+	c := NewCompose()
 	err := yaml.Unmarshal([]byte(sleepCompose), &c)
 	assert.NoError(t, err)
 	dir, err := ioutil.TempDir(os.TempDir(), "compose-")
@@ -118,7 +116,7 @@ func TestRunComposeTimeout(t *testing.T) {
 }
 
 func TestRunComposeCancel(t *testing.T) {
-	var c Compose
+	c := NewCompose()
 	err := yaml.Unmarshal([]byte(sleepCompose), &c)
 	assert.NoError(t, err)
 	dir, err := ioutil.TempDir(os.TempDir(), "compose-")
@@ -137,10 +135,22 @@ func TestRunComposeCancel(t *testing.T) {
 }
 
 func TestNewServiceGraph(t *testing.T) {
-	var c Compose
+	c := NewCompose()
 	err := yaml.Unmarshal([]byte(withDependsCompose), &c)
 	assert.NoError(t, err)
 	graph, err := c.NewServiceGraph()
 	assert.NoError(t, err)
 	fmt.Println(graph)
+}
+
+func TestUnmarshal(t *testing.T) {
+	c := NewCompose()
+	err := yaml.Unmarshal([]byte(withDependsCompose), c)
+	assert.NoError(t, err)
+	assert.Equal(t, "3", c.Version)
+	hello, ok := c.Services["hello"].(map[string]interface{})
+	assert.True(t, ok)
+	cmd, ok := hello["command"]
+	assert.True(t, ok)
+	assert.Equal(t, "echo world", cmd)
 }

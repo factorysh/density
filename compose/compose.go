@@ -119,7 +119,83 @@ func lazyEnsureBin() error {
 }
 
 // Compose is a docker-compose project
-type Compose map[string]interface{}
+type Compose struct {
+	Version  string
+	Services map[string]interface{}
+	X        map[string]interface{}
+}
+
+// NewCompose inits a compose struct
+func NewCompose() *Compose {
+	return &Compose{
+		Services: make(map[string]interface{}),
+		X:        make(map[string]interface{}),
+	}
+
+}
+
+// UnmarshalYAML is used to unmarshal a docker-compose (yaml) file
+func (c *Compose) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.DocumentNode {
+		return nil
+	}
+
+	for i := 0; i < len(value.Content); i += 2 {
+		k := value.Content[i]
+		v := value.Content[i+1]
+
+		switch {
+		case k.Value == "version":
+			v.Decode(&c.Version)
+		case k.Value == "services":
+			var services map[string]interface{}
+			err := v.Decode(&services)
+			if err != nil {
+				return err
+			}
+
+			for _, key := range reflect.ValueOf(services).MapKeys() {
+				service, ok := services[key.String()]
+				if !ok {
+					return fmt.Errorf("Error while parsing service %s", key)
+				}
+				c.Services[key.String()] = service
+			}
+		case strings.HasPrefix(k.Value, "x-"):
+			var xs map[string]interface{}
+			err := v.Decode(&xs)
+			if err != nil {
+				return err
+			}
+
+			for _, key := range reflect.ValueOf(xs).MapKeys() {
+				x, ok := xs[key.String()]
+				if !ok {
+					return fmt.Errorf("Error while parsing service %s", key)
+				}
+				c.X[key.String()] = x
+			}
+
+		}
+	}
+
+	return nil
+}
+
+// MarshalYAML is used to marshal a Compose back to its yaml form
+func (c Compose) MarshalYAML() (interface{}, error) {
+
+	acc := map[string]interface{}{
+		"version":  c.Version,
+		"services": c.Services,
+	}
+
+	for k, v := range c.X {
+		acc[k] = v
+	}
+
+	return acc, nil
+}
 
 // Validate compose content
 func (c Compose) Validate() error {
@@ -167,15 +243,11 @@ func (c Compose) Validate() error {
 }
 
 func (c Compose) guessMainContainer() (string, error) {
-	services, err := c.Services()
-	if err != nil {
-		return "", err
+	if len(c.Services) == 0 {
+		return "", fmt.Errorf("'services' is not a an empty map : %p", &c.Services)
 	}
-	if len(services) == 0 {
-		return "", fmt.Errorf("'services' is not a an empty map : %p", services)
-	}
-	if len(services) == 1 { // Easy, there is only one service
-		for k := range services {
+	if len(c.Services) == 1 { // Easy, there is only one service
+		for k := range c.Services {
 			return k, nil
 		}
 	}
@@ -257,55 +329,16 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (ta
 	}, err
 }
 
-// Version check if version is set in docker compose file
-func (c Compose) Version() (string, error) {
-	v, ok := c["version"]
-	if !ok {
-		return "", errors.New("version is mandatory")
-	}
-	vv, ok := v.(string)
-	if !ok {
-		return "", errors.New("version must be a string")
-	}
-	return vv, nil
-}
-
-// Services gets all the services from a compose file
-func (c Compose) Services() (map[string]interface{}, error) {
-	s, ok := c["services"]
-	if !ok {
-		return nil, errors.New("services is mandatory")
-	}
-	v := reflect.ValueOf(s)
-	if v.Kind() != reflect.Map {
-		return nil, fmt.Errorf("Wrong format : %v", s)
-	}
-	r := make(map[string]interface{})
-	for _, k := range v.MapKeys() {
-		if k.Kind() != reflect.String {
-			return nil, fmt.Errorf("Wrong key format: %v", k)
-		}
-		r[k.String()] = v.MapIndex(k)
-	}
-	return r, nil
-}
-
 // ServiceGraph represents a map of services to dependencies
 type ServiceGraph map[string]([]string)
 
 // NewServiceGraph generates a graph of deps from a compose description
 func (c Compose) NewServiceGraph() (*ServiceGraph, error) {
-	// fetch all services
-	services, err := c.Services()
-	if err != nil {
-		return nil, err
-	}
-
 	// init graph
 	graph := make(ServiceGraph)
 
 	// range over all services and populate the graph
-	for service, value := range services {
+	for service, value := range c.Services {
 		data, ok := value.(map[string]interface{})
 		fmt.Println(data)
 		if !ok {
