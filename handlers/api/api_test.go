@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -34,9 +35,11 @@ func TestAPI(t *testing.T) {
 	c, err := newClient(ts.URL, key)
 	assert.NoError(t, err)
 
-	res, err := c.Do("GET", "/api/schedules", nil)
+	var r []interface{}
+	res, err := c.Do("GET", "/api/schedules", nil, &r)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, res.StatusCode)
+	assert.Len(t, r, 0)
 }
 
 type testClient struct {
@@ -61,11 +64,25 @@ func newClient(root, key string) (*testClient, error) {
 	}, nil
 }
 
-func (t *testClient) Do(method, url string, body io.Reader) (*http.Response, error) {
+func (t *testClient) Do(method, url string, body io.Reader, value interface{}) (*http.Response, error) {
 	r, err := http.NewRequest(method, t.root+url, body)
 	if err != nil {
 		return nil, err
 	}
 	r.Header.Set("Authorization", t.authorization)
-	return t.client.Do(r)
+	res, err := t.client.Do(r)
+	if err != nil {
+		return res, err
+	}
+	defer res.Body.Close()
+	ct := res.Header.Get("content-type")
+	if ct != "application/json" {
+		return res, fmt.Errorf("Wrong content-type : %s", ct)
+	}
+	raw, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return res, err
+	}
+	err = json.Unmarshal(raw, value)
+	return res, err
 }
