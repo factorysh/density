@@ -26,6 +26,8 @@ test:
 	github.com/factorysh/batch-scheduler/pubsub
 	go test -cover -timeout 30s \
 	github.com/factorysh/batch-scheduler/scheduler
+	go test -cover -timeout 30s \
+	github.com/factorysh/batch-scheduler/middlewares
 
 generate:
 	go generate ./task
