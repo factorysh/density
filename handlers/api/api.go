@@ -1,23 +1,46 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/factorysh/batch-scheduler/middlewares"
+	"github.com/factorysh/batch-scheduler/owner"
 	"github.com/factorysh/batch-scheduler/scheduler"
+	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
 )
 
 func MuxAPI(schd *scheduler.Scheduler, authKey string) http.HandlerFunc {
 	router := mux.NewRouter()
-	router.HandleFunc("/api/schedules/{owner}", HandleGetSchedules(schd)).Methods(http.MethodGet)
-	router.HandleFunc("/api/schedules", HandleGetSchedules(schd)).Methods(http.MethodGet)
-	router.HandleFunc("/api/schedules", HandlePostSchedules(schd)).Methods(http.MethodPost)
-	router.HandleFunc("/api/schedules/{owner}", HandlePostSchedules(schd)).Methods(http.MethodPost)
-	router.HandleFunc("/api/schedules/{job}", HandleDeleteSchedules(schd)).Methods(http.MethodDelete)
+	router.HandleFunc("/api/schedules/{owner}", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
+	router.HandleFunc("/api/schedules", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
+	router.HandleFunc("/api/schedules", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
+	router.HandleFunc("/api/schedules/{owner}", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
+	router.HandleFunc("/api/schedules/{job}", wrapMyHandler(schd, HandleDeleteSchedules)).Methods(http.MethodDelete)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		middlewares.Auth(authKey, router.ServeHTTP).ServeHTTP(w, r)
+	}
+}
+
+func wrapMyHandler(schd *scheduler.Scheduler, handler func(*scheduler.Scheduler, *owner.Owner, http.ResponseWriter,
+	*http.Request) (interface{}, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		hub := sentry.GetHubFromContext(r.Context())
+		u, err := owner.FromCtx(r.Context())
+		if err != nil {
+			hub.CaptureException(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		data, err := handler(schd, u, w, r)
+		if err != nil {
+			hub.CaptureException(err)
+			return
+		}
+		json.NewEncoder(w).Encode(data)
 	}
 }
