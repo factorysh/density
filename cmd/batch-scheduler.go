@@ -52,12 +52,10 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	fmt.Println("Listening", s.Addr)
-	go func() {
-		select {
-		case <-done:
-			fmt.Println("Bye")
-			cancel()
-		}
-	}()
-	s.Run(ctx)
+	go s.Run(ctx)
+	select {
+	case <-done:
+		fmt.Println("Bye")
+		cancel()
+	}
 }
