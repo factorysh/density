@@ -2,35 +2,30 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
+	"time"
 
 	"github.com/factorysh/batch-scheduler/config"
 	handlers "github.com/factorysh/batch-scheduler/handlers/api"
-	"github.com/factorysh/batch-scheduler/middlewares"
 	"github.com/factorysh/batch-scheduler/runner"
 	"github.com/factorysh/batch-scheduler/scheduler"
 	"github.com/factorysh/batch-scheduler/store"
 	sentryhttp "github.com/getsentry/sentry-go/http"
-	"github.com/gorilla/mux"
 )
 
 // Server struct containing config
 type Server struct {
-	API       *http.Server
-	Done      chan (os.Signal)
-	Router    *mux.Router
 	Scheduler *scheduler.Scheduler
 	AuthKey   string
+	Addr      string
 }
 
 // Initialize server instance
-func (s *Server) Initialize() {
+func New() *Server {
 
+	s := &Server{}
 	var found bool
 
 	if s.AuthKey, found = os.LookupEnv("AUTH_KEY"); !found {
@@ -42,56 +37,43 @@ func (s *Server) Initialize() {
 		log.Fatal(err)
 	}
 
-	s.Done = make(chan os.Signal, 1)
-	signal.Notify(s.Done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
 	// TODO: dynamic ressource parameters (env, file, whatever)
 	// FIXME where is my home?
 	s.Scheduler = scheduler.New(scheduler.NewResources(2, 512*16), runner.New("/tmp"), store.NewMemoryStore())
 
-	// TODO: handle context
-	go s.Scheduler.Start(context.Background())
-
-	s.routes()
-
-}
-
-func (s *Server) routes() {
-
-	// Create an instance of sentryhttp
-	sentryHandler := sentryhttp.New(sentryhttp.Options{})
-
-	stack := func(f http.HandlerFunc) http.HandlerFunc {
-		return middlewares.Auth(s.AuthKey, sentryHandler.HandleFunc(f))
+	var ok bool
+	if s.Addr, ok = os.LookupEnv("LISTEN"); !ok {
+		s.Addr = "localhost:8042"
 	}
 
-	s.Router = mux.NewRouter()
-	s.Router.HandleFunc("/api/schedules/{owner}", stack(handlers.HandleGetSchedules(s.Scheduler))).Methods(http.MethodGet)
-	s.Router.HandleFunc("/api/schedules", stack(handlers.HandleGetSchedules(s.Scheduler))).Methods(http.MethodGet)
-	s.Router.HandleFunc("/api/schedules", stack(handlers.HandlePostSchedules(s.Scheduler))).Methods(http.MethodPost)
-	s.Router.HandleFunc("/api/schedules/{owner}", stack(handlers.HandlePostSchedules(s.Scheduler))).Methods(http.MethodPost)
-	s.Router.HandleFunc("/api/schedules/{job}", stack(handlers.HandleDeleteSchedules(s.Scheduler))).Methods(http.MethodDelete)
-
+	return s
 }
 
 // Run starts this server instance
-func (s *Server) Run() {
+func (s *Server) Run(ctx context.Context) {
 
-	var port string
-	var ok bool
+	ctxScheduler, cancelScheduler := context.WithCancel(context.Background())
+	defer cancelScheduler()
+	go s.Scheduler.Start(ctxScheduler)
 
-	if port, ok = os.LookupEnv("PORT"); !ok {
-		port = "8042"
-	}
+	sentryHandler := sentryhttp.New(sentryhttp.Options{})
 
-	s.API = &http.Server{
-		Addr:    fmt.Sprintf(":%s", port),
-		Handler: s.Router,
+	server := &http.Server{
+		Addr:    s.Addr,
+		Handler: sentryHandler.HandleFunc(handlers.MuxAPI(s.Scheduler, s.AuthKey)),
 	}
 
 	go func() {
-		if err := s.API.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
 	}()
+
+	select {
+	case <-ctx.Done():
+		ctxShutdown, cancelShutdown := context.WithTimeout(context.TODO(), 3*time.Second)
+		defer cancelShutdown()
+		server.Shutdown(ctxShutdown)
+		cancelShutdown()
+	}
 }

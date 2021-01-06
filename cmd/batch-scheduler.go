@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -41,21 +44,20 @@ func main() {
 		})
 	}
 
-	var s server.Server
+	s := server.New()
 
-	s.Initialize()
-	s.Run()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	<-s.Done
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	err = s.API.Shutdown(ctx)
-	defer func() {
-		cancel()
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	fmt.Println("Listening", s.Addr)
+	go func() {
+		select {
+		case <-done:
+			fmt.Println("Bye")
+			cancel()
+		}
 	}()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	s.Run(ctx)
 }
