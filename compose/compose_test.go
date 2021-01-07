@@ -83,6 +83,26 @@ x-batch:
 
 `
 
+const withAmbiguousDeps = `
+version: "3.6"
+services:
+  redis:
+    image: redis
+  pg:
+    image: pg
+  sidekiq:
+    image: sidekiq
+    depends_on:
+      - redis
+      - pg
+  rails:
+    image: rails
+    depends_on:
+      - redis
+      - pg
+
+`
+
 func TestValidate(t *testing.T) {
 	tests := []struct {
 		input []byte
@@ -221,4 +241,14 @@ func TestFindMain(t *testing.T) {
 	graph := cc.NewServiceGraph()
 	depths := graph.ByServiceDepth()
 	assert.Equal(t, "hello", depths.findMain())
+}
+
+func TestUnfindableMain(t *testing.T) {
+	cc := NewCompose()
+	err := yaml.Unmarshal([]byte(withAmbiguousDeps), &cc)
+	assert.NoError(t, err)
+	graph := cc.NewServiceGraph()
+	depths := graph.ByServiceDepth()
+	assert.Equal(t, "hello", depths.findMain())
+	// FIXME there is no answer
 }
