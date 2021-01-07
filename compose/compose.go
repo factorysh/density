@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/docker/docker/client"
@@ -323,12 +324,6 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (ta
 	}, err
 }
 
-// ServiceGraph represents a map of services to dependencies
-type ServiceGraph map[string]([]string)
-
-// ServiceDepth represents the level of deps for a services
-type ServiceDepth map[string]int
-
 // NewServiceGraph generates a graph of deps from a compose description
 func (c Compose) NewServiceGraph() ServiceGraph {
 	// init graph
@@ -359,6 +354,58 @@ func (c Compose) NewServiceGraph() ServiceGraph {
 	return graph
 }
 
+// ServiceDepth represents the level of deps for a services
+type ServiceDepth map[string]int
+
+func (sd ServiceDepth) findLeader() (string, error) {
+
+	if len(sd) == 0 {
+		return "", fmt.Errorf("Empty graph")
+	}
+
+	// a tmp structure used to order the input map
+	type smap struct {
+		Key   string
+		Value int
+	}
+
+	// a tmp value used for ordering
+	var tmp []smap
+
+	for k, v := range sd {
+		tmp = append(tmp, smap{k, v})
+	}
+
+	// using sort.Slice from go 1.8
+	sort.Slice(tmp, func(a, b int) bool {
+		return tmp[a].Value > tmp[b].Value
+	})
+
+	switch {
+	case len(tmp) == 1:
+		return tmp[0].Key, nil
+	case len(tmp) > 1:
+		if tmp[0].Value == tmp[1].Value {
+			// ensure a sorted response to get similar error message between two calls
+			ambiguity := []string{tmp[0].Key, tmp[1].Key}
+			sort.Strings(ambiguity)
+			return "", fmt.Errorf("Leader ambiguity between nodes %s and %s", ambiguity[0], ambiguity[1])
+		}
+
+		return tmp[0].Key, nil
+	default:
+		return "", fmt.Errorf("Unexpected case in graph structure")
+	}
+}
+
+// Len is used by the sort interface
+func (sd ServiceDepth) Len() int {
+	return len(sd)
+}
+
+// ServiceGraph represents a map of services to dependencies
+type ServiceGraph map[string]([]string)
+
 // ByServiceDepth computes deps depth by service
 func (s ServiceGraph) ByServiceDepth() ServiceDepth {
 
@@ -388,19 +435,4 @@ func (s ServiceGraph) serviceDepth(index string, memory ServiceDepth) int {
 	}
 
 	return childs
-}
-
-func (sd ServiceDepth) findMain() string {
-
-	name := ""
-	max := 0
-
-	for k, v := range sd {
-		if v > max {
-			max = v
-			name = k
-		}
-	}
-
-	return name
 }

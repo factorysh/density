@@ -240,7 +240,8 @@ func TestFindMain(t *testing.T) {
 	assert.NoError(t, err)
 	graph := cc.NewServiceGraph()
 	depths := graph.ByServiceDepth()
-	assert.Equal(t, "hello", depths.findMain())
+	main, err := depths.findLeader()
+	assert.Equal(t, "hello", main)
 }
 
 func TestUnfindableMain(t *testing.T) {
@@ -249,6 +250,6 @@ func TestUnfindableMain(t *testing.T) {
 	assert.NoError(t, err)
 	graph := cc.NewServiceGraph()
 	depths := graph.ByServiceDepth()
-	assert.Equal(t, "hello", depths.findMain())
-	// FIXME there is no answer
+	_, err = depths.findLeader()
+	assert.EqualError(t, err, "Leader ambiguity between nodes rails and sidekiq")
 }
