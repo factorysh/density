@@ -54,6 +54,35 @@ x-batch:
   key: value
 `
 
+const withALotOfDeps = `
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "echo world"
+    depends_on:
+      - dep
+      - another
+
+  dep:
+    image: "busybox:latest"
+    command: "echo dep"
+    depends_on:
+      - last
+
+  another:
+    image: "buxybox:latest"
+    command: "echo another"
+
+  last:
+    image: "busybox:latest"
+    command: "echo last"
+
+x-batch:
+  key: value
+
+`
+
 func TestValidate(t *testing.T) {
 	tests := []struct {
 		input []byte
@@ -141,7 +170,7 @@ func TestNewServiceGraph(t *testing.T) {
 	c := NewCompose()
 	err := yaml.Unmarshal([]byte(withDependsCompose), &c)
 	assert.NoError(t, err)
-	graph, err := c.NewServiceGraph()
+	graph := c.NewServiceGraph()
 	assert.NoError(t, err)
 	deps, ok := graph["hello"]
 	assert.True(t, ok)
@@ -163,4 +192,24 @@ func TestUnmarshal(t *testing.T) {
 	xv, ok := x["key"]
 	assert.True(t, ok)
 	assert.Equal(t, "value", xv)
+}
+
+func TestByServiceDepth(t *testing.T) {
+	c := NewCompose()
+	err := yaml.Unmarshal([]byte(withDependsCompose), &c)
+	assert.NoError(t, err)
+	graph := c.NewServiceGraph()
+	depths := graph.ByServiceDepth()
+	depth, ok := depths["hello"]
+	assert.True(t, ok)
+	assert.Equal(t, depth, 1)
+
+	cc := NewCompose()
+	err = yaml.Unmarshal([]byte(withALotOfDeps), &cc)
+	assert.NoError(t, err)
+	graph = cc.NewServiceGraph()
+	depths = graph.ByServiceDepth()
+	depth, ok = depths["hello"]
+	assert.True(t, ok)
+	assert.Equal(t, depth, 2)
 }

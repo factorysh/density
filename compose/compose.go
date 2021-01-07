@@ -327,7 +327,7 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (ta
 type ServiceGraph map[string]([]string)
 
 // NewServiceGraph generates a graph of deps from a compose description
-func (c Compose) NewServiceGraph() (ServiceGraph, error) {
+func (c Compose) NewServiceGraph() ServiceGraph {
 	// init graph
 	graph := make(ServiceGraph)
 
@@ -353,5 +353,36 @@ func (c Compose) NewServiceGraph() (ServiceGraph, error) {
 
 	}
 
-	return graph, nil
+	return graph
+}
+
+// ByServiceDepth computes deps depth by service
+func (s ServiceGraph) ByServiceDepth() map[string]int {
+
+	d := make(map[string]int)
+
+	for k := range s {
+		d[k] = s.serviceDepth(k, d)
+	}
+
+	return d
+
+}
+
+func (s ServiceGraph) serviceDepth(index string, memory map[string]int) int {
+
+	if _, found := s[index]; !found {
+		return 1
+	}
+
+	if depth, ok := memory[index]; ok {
+		return depth
+	}
+
+	var childs int
+	for _, child := range s[index] {
+		childs += s.serviceDepth(child, memory)
+	}
+
+	return childs
 }
