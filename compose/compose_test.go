@@ -49,6 +49,9 @@ services:
   dep:
     image: "busybox:latest"
     command: "echo dep"
+
+x-batch:
+  key: value
 `
 
 func TestValidate(t *testing.T) {
@@ -157,5 +160,5 @@ func TestUnmarshal(t *testing.T) {
 	assert.True(t, ok)
 	xv, ok := x["key"]
 	assert.True(t, ok)
-	assert.Equal(t, xv, "value")
+	assert.Equal(t, "value", xv)
 }
