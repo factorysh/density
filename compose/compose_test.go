@@ -143,7 +143,9 @@ func TestNewServiceGraph(t *testing.T) {
 	assert.NoError(t, err)
 	graph, err := c.NewServiceGraph()
 	assert.NoError(t, err)
-	fmt.Println(graph)
+	deps, ok := graph["hello"]
+	assert.True(t, ok)
+	assert.Equal(t, deps, []string{"dep"})
 }
 
 func TestUnmarshal(t *testing.T) {

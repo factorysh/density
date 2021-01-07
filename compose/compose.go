@@ -327,25 +327,31 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (ta
 type ServiceGraph map[string]([]string)
 
 // NewServiceGraph generates a graph of deps from a compose description
-func (c Compose) NewServiceGraph() (*ServiceGraph, error) {
+func (c Compose) NewServiceGraph() (ServiceGraph, error) {
 	// init graph
 	graph := make(ServiceGraph)
 
 	// range over all services and populate the graph
 	for service, value := range c.Services {
 		data, ok := value.(map[string]interface{})
-		fmt.Println(data)
 		if !ok {
 			continue
 		}
 
-		deps, ok := data["depends_on"].([]string)
+		deps, ok := data["depends_on"].([]interface{})
 		if !ok {
 			continue
 		}
 
-		graph[service] = deps
+		for _, value := range deps {
+			dep, ok := value.(string)
+			if !ok {
+				continue
+			}
+			graph[service] = append(graph[service], dep)
+		}
+
 	}
 
-	return &graph, nil
+	return graph, nil
 }
