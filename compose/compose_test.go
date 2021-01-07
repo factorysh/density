@@ -213,3 +213,12 @@ func TestByServiceDepth(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, depth, 2)
 }
+
+func TestFindMain(t *testing.T) {
+	cc := NewCompose()
+	err := yaml.Unmarshal([]byte(withALotOfDeps), &cc)
+	assert.NoError(t, err)
+	graph := cc.NewServiceGraph()
+	depths := graph.ByServiceDepth()
+	assert.Equal(t, "hello", depths.findMain())
+}

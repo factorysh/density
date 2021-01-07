@@ -326,6 +326,9 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (ta
 // ServiceGraph represents a map of services to dependencies
 type ServiceGraph map[string]([]string)
 
+// ServiceDepth represents the level of deps for a services
+type ServiceDepth map[string]int
+
 // NewServiceGraph generates a graph of deps from a compose description
 func (c Compose) NewServiceGraph() ServiceGraph {
 	// init graph
@@ -357,9 +360,9 @@ func (c Compose) NewServiceGraph() ServiceGraph {
 }
 
 // ByServiceDepth computes deps depth by service
-func (s ServiceGraph) ByServiceDepth() map[string]int {
+func (s ServiceGraph) ByServiceDepth() ServiceDepth {
 
-	d := make(map[string]int)
+	d := make(ServiceDepth)
 
 	for k := range s {
 		d[k] = s.serviceDepth(k, d)
@@ -369,7 +372,7 @@ func (s ServiceGraph) ByServiceDepth() map[string]int {
 
 }
 
-func (s ServiceGraph) serviceDepth(index string, memory map[string]int) int {
+func (s ServiceGraph) serviceDepth(index string, memory ServiceDepth) int {
 
 	if _, found := s[index]; !found {
 		return 1
@@ -385,4 +388,19 @@ func (s ServiceGraph) serviceDepth(index string, memory map[string]int) int {
 	}
 
 	return childs
+}
+
+func (sd ServiceDepth) findMain() string {
+
+	name := ""
+	max := 0
+
+	for k, v := range sd {
+		if v > max {
+			max = v
+			name = k
+		}
+	}
+
+	return name
 }
