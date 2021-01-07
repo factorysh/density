@@ -20,7 +20,7 @@ services:
     image: "busybox:latest"
     command: "echo world"
 x-batch:
-  x-test: "value"
+  key: value
 `
 
 const sleepCompose = `

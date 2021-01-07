@@ -168,13 +168,7 @@ func (c *Compose) UnmarshalYAML(value *yaml.Node) error {
 				return err
 			}
 
-			for _, key := range reflect.ValueOf(xs).MapKeys() {
-				x, ok := xs[key.String()]
-				if !ok {
-					return fmt.Errorf("Error while parsing service %s", key)
-				}
-				c.X[key.String()] = x
-			}
+			c.X[k.Value] = xs
 
 		}
 	}
