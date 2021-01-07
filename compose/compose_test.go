@@ -153,4 +153,9 @@ func TestUnmarshal(t *testing.T) {
 	cmd, ok := hello["command"]
 	assert.True(t, ok)
 	assert.Equal(t, "echo world", cmd)
+	x, ok := c.X["x-batch"].(map[string]interface{})
+	assert.True(t, ok)
+	xv, ok := x["key"]
+	assert.True(t, ok)
+	assert.Equal(t, xv, "value")
 }
