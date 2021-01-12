@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
+	"strings"
 	"testing"
 
 	_ "github.com/factorysh/batch-scheduler/compose" // register compose.Compose as task.Action
@@ -31,6 +33,9 @@ func TestRunner(t *testing.T) {
 				"services": {
 					"hello": {
 						"image": "busybox",
+						"environment": {
+							"NAME": "$NAME"
+						},
 						"command": "echo $NAME"
 					}
 				}
@@ -50,14 +55,17 @@ func TestRunner(t *testing.T) {
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, _task.Done, status)
-	cmd := exec.Command("docker-compose", "ps")
-	cmd.Dir = f
+	cmd := exec.Command("docker-compose", "logs", "--no-color", "--tail=1", "hello")
+	cmd.Dir = path.Join(f, task.Id.String())
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
 	err = cmd.Run()
+	fmt.Println("error", stderr.String())
 	assert.NoError(t, err)
-	assert.True(t, false)
+	logs := stdout.String()
+	fmt.Println("logs:", logs)
+	assert.True(t, strings.HasSuffix(logs, "Bob\n"))
 }
