@@ -10,6 +10,8 @@ type Action interface {
 	Validate() error
 	// Run with a context, a working directory and environments variables.
 	Up(pwd string, environments map[string]string) (Run, error)
+	// RegisteredName is registered name
+	RegisteredName() string
 }
 
 type Run interface {

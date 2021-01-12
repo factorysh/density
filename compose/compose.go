@@ -15,6 +15,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func init() {
+	task.ActionsRegistry["compose"] = func() task.Action {
+		return NewCompose()
+	}
+}
+
 var composeIsHere bool = false
 
 // EnsureBin will ensure that docker-compose is found in $PATH
@@ -62,6 +68,10 @@ func NewCompose() *Compose {
 		X:        make(map[string]interface{}),
 	}
 
+}
+
+func (c *Compose) RegisteredName() string {
+	return "compose"
 }
 
 // UnmarshalYAML is used to unmarshal a docker-compose (yaml) file
