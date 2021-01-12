@@ -1,10 +1,13 @@
 package runner
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"testing"
 
 	_task "github.com/factorysh/batch-scheduler/task"
@@ -12,10 +15,11 @@ import (
 )
 
 func TestRunner(t *testing.T) {
-	f, err := ioutil.TempFile(os.TempDir(), "runner-")
+	f, err := ioutil.TempDir(os.TempDir(), "runner-")
 	assert.NoError(t, err)
-	defer os.Remove(f.Name())
-	runner := New(f.Name())
+	fmt.Println(f)
+	//defer os.Remove(f.Name())
+	runner := New(f)
 	jtask := `
 	{
 		"cpu": 1,
@@ -43,4 +47,14 @@ func TestRunner(t *testing.T) {
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, _task.Done, status)
+	cmd := exec.Command("docker-compose", "ps")
+	cmd.Dir = f
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
+	assert.NoError(t, err)
+	assert.True(t, false)
 }
