@@ -17,16 +17,12 @@ run:
 
 test:
 	go test -cover -timeout 30s \
-	github.com/factorysh/batch-scheduler/store
-	go test -cover -timeout 30s \
-	github.com/factorysh/batch-scheduler/compose
-	go test -cover -timeout 30s \
-	github.com/factorysh/batch-scheduler/task
-	go test -cover -timeout 30s \
-	github.com/factorysh/batch-scheduler/pubsub
-	go test -cover -timeout 30s \
-	github.com/factorysh/batch-scheduler/scheduler
-	go test -cover -timeout 30s \
+	github.com/factorysh/batch-scheduler/store \
+	github.com/factorysh/batch-scheduler/compose \
+	github.com/factorysh/batch-scheduler/task \
+	github.com/factorysh/batch-scheduler/runner \
+	github.com/factorysh/batch-scheduler/pubsub \
+	github.com/factorysh/batch-scheduler/scheduler \
 	github.com/factorysh/batch-scheduler/middlewares
 
 generate:
