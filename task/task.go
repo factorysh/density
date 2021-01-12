@@ -24,25 +24,27 @@ type Task struct {
 	Retry           int                `json:"retry"`              // Number of retry before crash
 	Every           time.Duration      `json:"every"`              // Periodic execution. Exclusive with Cron
 	Cron            string             `json:"cron"`               // Cron definition. Exclusive with Every
+	Environments    map[string]string  `json:"environments"`
 	resourceCancel  context.CancelFunc `json:"-"`
 	Run             Run                `json:"run"`
 }
 
 func (t *Task) UnmarshalJSON(b []byte) error {
 	raw := struct {
-		Start           time.Time       `json:"start"`              // Start time
-		MaxWaitTime     time.Duration   `json:"max_wait_time"`      // Max wait time before starting Action
-		MaxExectionTime time.Duration   `json:"max_execution_time"` // Max execution time
-		CPU             int             `json:"cpu"`                // CPU quota
-		RAM             int             `json:"ram"`                // RAM quota
-		Action          json.RawMessage `json:"action"`             // Action is an abstract, the thing to do
-		Id              uuid.UUID       `json:"id"`                 // Id
-		Status          Status          `json:"status"`             // Status
-		Mtime           time.Time       `json:"mtime"`              // Modified time
-		Owner           string          `json:"owner"`              // Owner
-		Retry           int             `json:"retry"`              // Number of retry before crash
-		Every           time.Duration   `json:"every"`              // Periodic execution. Exclusive with Cron
-		Cron            string          `json:"cron"`               // Cron definition. Exclusive with Every
+		Start           time.Time         `json:"start"`              // Start time
+		MaxWaitTime     time.Duration     `json:"max_wait_time"`      // Max wait time before starting Action
+		MaxExectionTime time.Duration     `json:"max_execution_time"` // Max execution time
+		CPU             int               `json:"cpu"`                // CPU quota
+		RAM             int               `json:"ram"`                // RAM quota
+		Action          json.RawMessage   `json:"action"`             // Action is an abstract, the thing to do
+		Id              uuid.UUID         `json:"id"`                 // Id
+		Status          Status            `json:"status"`             // Status
+		Mtime           time.Time         `json:"mtime"`              // Modified time
+		Owner           string            `json:"owner"`              // Owner
+		Retry           int               `json:"retry"`              // Number of retry before crash
+		Every           time.Duration     `json:"every"`              // Periodic execution. Exclusive with Cron
+		Cron            string            `json:"cron"`               // Cron definition. Exclusive with Every
+		Environments    map[string]string `json:"environments"`
 	}{}
 	err := json.Unmarshal(b, &raw)
 	if err != nil {
@@ -60,6 +62,7 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	t.Retry = raw.Retry
 	t.Every = raw.Every
 	t.Cron = raw.Cron
+	t.Environments = raw.Environments
 
 	var d DummyAction
 	err = json.Unmarshal(raw.Action, &d)
