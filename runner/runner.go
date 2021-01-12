@@ -22,8 +22,6 @@ func (c *Runner) Up(task *task.Task) (task.Run, error) {
 	if err != nil && os.IsNotExist(err) {
 		return nil, err
 	}
-	env := map[string]string{
-		"BASH_HELLO": "World",
-	}
-	return task.Action.Up(pwd, env)
+	// FIXME add some late environments
+	return task.Action.Up(pwd, task.Environments)
 }
