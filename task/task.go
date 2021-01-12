@@ -3,7 +3,6 @@ package task
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -45,48 +44,48 @@ type Task struct {
 	Run             Run                `json:"run"`
 }
 
+type RawTask struct {
+	Start           time.Time                  `json:"start"`              // Start time
+	MaxWaitTime     time.Duration              `json:"max_wait_time"`      // Max wait time before starting Action
+	MaxExectionTime time.Duration              `json:"max_execution_time"` // Max execution time
+	CPU             int                        `json:"cpu"`                // CPU quota
+	RAM             int                        `json:"ram"`                // RAM quota
+	Action          map[string]json.RawMessage `json:"action"`             // Action is an abstract, the thing to do
+	Id              uuid.UUID                  `json:"id"`                 // Id
+	Status          Status                     `json:"status"`             // Status
+	Mtime           time.Time                  `json:"mtime"`              // Modified time
+	Owner           string                     `json:"owner"`              // Owner
+	Retry           int                        `json:"retry"`              // Number of retry before crash
+	Every           time.Duration              `json:"every"`              // Periodic execution. Exclusive with Cron
+	Cron            string                     `json:"cron"`               // Cron definition. Exclusive with Every
+	Environments    map[string]string          `json:"environments"`
+}
+
 func (t *Task) UnmarshalJSON(b []byte) error {
-	raw := struct {
-		Start           time.Time                  `json:"start"`              // Start time
-		MaxWaitTime     time.Duration              `json:"max_wait_time"`      // Max wait time before starting Action
-		MaxExectionTime time.Duration              `json:"max_execution_time"` // Max execution time
-		CPU             int                        `json:"cpu"`                // CPU quota
-		RAM             int                        `json:"ram"`                // RAM quota
-		Action          map[string]json.RawMessage `json:"action"`             // Action is an abstract, the thing to do
-		Id              uuid.UUID                  `json:"id"`                 // Id
-		Status          Status                     `json:"status"`             // Status
-		Mtime           time.Time                  `json:"mtime"`              // Modified time
-		Owner           string                     `json:"owner"`              // Owner
-		Retry           int                        `json:"retry"`              // Number of retry before crash
-		Every           time.Duration              `json:"every"`              // Periodic execution. Exclusive with Cron
-		Cron            string                     `json:"cron"`               // Cron definition. Exclusive with Every
-		Environments    map[string]string          `json:"environments"`
-	}{}
+	var raw RawTask
 	err := json.Unmarshal(b, &raw)
 	if err != nil {
 		return err
 	}
-	if len(raw.Action) == 0 {
-		return errors.New("Empty action")
-	}
-	if len(raw.Action) > 1 {
+	l := len(raw.Action)
+	switch {
+	case l == 0:
+		t.Action = nil
+	case l > 1:
 		return fmt.Errorf("Two many actions %d", len(raw.Action))
-	}
-
-	var action Action
-	for k, v := range raw.Action {
-		factory, ok := ActionsRegistry[k]
-		if !ok {
-			return fmt.Errorf("Unregistered action : %s", k)
+	default:
+		for k, v := range raw.Action {
+			factory, ok := ActionsRegistry[k]
+			if !ok {
+				return fmt.Errorf("Unregistered action : %s", k)
+			}
+			t.Action = factory()
+			err := json.Unmarshal(v, t.Action)
+			if err != nil {
+				return err
+			}
 		}
-		action = factory()
-		err := json.Unmarshal(v, action)
-		if err != nil {
-			return err
-		}
 	}
-	t.Action = action
-
 	t.Start = raw.Start
 	t.MaxWaitTime = raw.MaxWaitTime
 	t.MaxExectionTime = raw.MaxExectionTime
@@ -102,6 +101,34 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	t.Environments = raw.Environments
 
 	return nil
+}
+
+func (t *Task) MarshalJSON() ([]byte, error) {
+	raw := RawTask{
+		Start:           t.Start,
+		MaxWaitTime:     t.MaxWaitTime,
+		MaxExectionTime: t.MaxExectionTime,
+		CPU:             t.CPU,
+		RAM:             t.RAM,
+		Id:              t.Id,
+		Status:          t.Status,
+		Mtime:           t.Mtime,
+		Owner:           t.Owner,
+		Retry:           t.Retry,
+		Every:           t.Every,
+		Cron:            t.Cron,
+		Environments:    t.Environments,
+		Action:          make(map[string]json.RawMessage),
+	}
+	if t.Action != nil {
+		rawAction, err := json.Marshal(t.Action)
+		if err != nil {
+			return nil, err
+		}
+		name := t.Action.RegisteredName()
+		raw.Action[name] = rawAction
+	}
+	return json.Marshal(raw)
 }
 
 // NewTask init a new task
