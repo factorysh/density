@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"testing"
 
+	_ "github.com/factorysh/batch-scheduler/compose" // register compose.Compose as task.Action
 	_task "github.com/factorysh/batch-scheduler/task"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,18 +19,20 @@ func TestRunner(t *testing.T) {
 	f, err := ioutil.TempDir(os.TempDir(), "runner-")
 	assert.NoError(t, err)
 	fmt.Println(f)
-	//defer os.Remove(f.Name())
+	defer os.Remove(f)
 	runner := New(f)
 	jtask := `
 	{
 		"cpu": 1,
 		"ram": 256,
 		"action": {
-			"version":"3",
-			"services": {
-				"hello": {
-					"image": "busybox",
-					"command": "echo $NAME"
+			"compose": {
+				"version":"3",
+				"services": {
+					"hello": {
+						"image": "busybox",
+						"command": "echo $NAME"
+					}
 				}
 			}
 		},

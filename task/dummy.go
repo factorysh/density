@@ -16,6 +16,10 @@ type DummyAction struct {
 	waiters  []chan interface{}
 }
 
+func (da *DummyAction) RegisteredName() string {
+	return "dummy"
+}
+
 // Validate action interface implementation
 func (da *DummyAction) Validate() error {
 	return nil
