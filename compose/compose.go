@@ -48,10 +48,11 @@ func lazyEnsureBin() error {
 }
 
 // Compose is a docker-compose project
+// FIXME there is more first level keys, like volume or networks
 type Compose struct {
-	Version  string
+	Version  string // Compose version
 	Services map[string]interface{}
-	X        map[string]interface{}
+	X        map[string]interface{} // The x-stuff on top level, just for aliasing
 }
 
 // NewCompose inits a compose struct
