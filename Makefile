@@ -20,6 +20,7 @@ test:
 	github.com/factorysh/batch-scheduler/store \
 	github.com/factorysh/batch-scheduler/compose \
 	github.com/factorysh/batch-scheduler/task \
+	github.com/factorysh/batch-scheduler/task/status \
 	github.com/factorysh/batch-scheduler/runner \
 	github.com/factorysh/batch-scheduler/pubsub \
 	github.com/factorysh/batch-scheduler/scheduler \

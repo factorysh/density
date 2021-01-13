@@ -39,7 +39,13 @@ func New() *Server {
 
 	// TODO: dynamic ressource parameters (env, file, whatever)
 	// FIXME where is my home?
-	s.Scheduler = scheduler.New(scheduler.NewResources(2, 512*16), runner.New("/tmp"), store.NewMemoryStore())
+	// TODO: storage kind and path from env
+	// Plug bbolt with violence
+	store, err := store.NewBoltStore("/tmp/batch.store")
+	if err != nil {
+		log.Fatal(err)
+	}
+	s.Scheduler = scheduler.New(scheduler.NewResources(2, 512*16), runner.New("/tmp"), store)
 
 	var ok bool
 	if s.Addr, ok = os.LookupEnv("LISTEN"); !ok {
@@ -54,6 +60,11 @@ func (s *Server) Run(ctx context.Context) {
 
 	ctxScheduler, cancelScheduler := context.WithCancel(context.Background())
 	defer cancelScheduler()
+	err := s.Scheduler.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	go s.Scheduler.Start(ctxScheduler)
 
 	sentryHandler := sentryhttp.New(sentryhttp.Options{})

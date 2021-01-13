@@ -11,6 +11,8 @@ import (
 	_store "github.com/factorysh/batch-scheduler/store"
 	"github.com/factorysh/batch-scheduler/task"
 	_task "github.com/factorysh/batch-scheduler/task"
+	_run "github.com/factorysh/batch-scheduler/task/run"
+	_status "github.com/factorysh/batch-scheduler/task/status"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -20,12 +22,13 @@ type Scheduler struct {
 	tasks     *JSONStore
 	lock      sync.RWMutex
 	events    chan interface{}
+	stop      chan bool
 	runner    Runner
 	Pubsub    *pubsub.PubSub
 }
 
 type Runner interface {
-	Up(*task.Task) (task.Run, error)
+	Up(*task.Task) (_run.Run, error)
 }
 
 func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
@@ -33,6 +36,7 @@ func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 		resources: resources,
 		tasks:     &JSONStore{store},
 		events:    make(chan interface{}),
+		stop:      make(chan bool),
 		runner:    runner,
 		Pubsub:    pubsub.NewPubSub(),
 	}
@@ -54,14 +58,14 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 		return uuid.Nil, err
 	}
 	task.Id = id
-	task.Status = _task.Waiting
+	task.Status = _status.Waiting
 	task.Mtime = time.Now()
 	err = s.tasks.Put(task)
 	if err != nil {
 		return uuid.Nil, err
 	}
 	task.Cancel = func() {
-		task.Status = _task.Canceled
+		task.Status = _status.Canceled
 	}
 	s.events <- new(interface{})
 	s.Pubsub.Publish(pubsub.Event{
@@ -71,12 +75,75 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	return id, nil
 }
 
+// Load will fetch jobs data and status from storage
+func (s *Scheduler) Load() error {
+	// to remove tasks
+	garbage := make([]*_task.Task, 0)
+	// to update tasks
+	update := make([]*_task.Task, 0)
+
+	err := s.tasks.ForEach(func(t *_task.Task) error {
+		// remember old status
+		old := t.Status
+		// fresh status
+		var fresh _status.Status
+
+		// fetch status
+		status, exit, err := t.Run.Status()
+		if err != nil {
+			return err
+		}
+
+		// map runner status to task status
+		switch status {
+		case _run.Running:
+			fresh = _status.Running
+		case _run.Dead:
+			fresh = _status.Error
+		case _run.Exited:
+			if exit != 0 {
+				fresh = _status.Error
+			} else {
+				fresh = _status.Done
+			}
+		default:
+			// gc the ones not found
+			garbage = append(garbage, t)
+		}
+
+		// if status mismatch, update
+		if old != fresh {
+			t.Status = fresh
+			update = append(update, t)
+		}
+		return err
+	})
+
+	for _, t := range garbage {
+		err := s.tasks.Delete(t.Id)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, t := range update {
+		err := s.tasks.Put(t)
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
 // Start is the main loop
 func (s *Scheduler) Start(ctx context.Context) {
 	// FIXME, find all detached running tasks in s.tasks
 	for {
 		select {
 		case <-s.events:
+		case <-s.stop:
+			return
 		}
 		l := log.WithField("tasks", s.tasks.Length())
 		todos := s.readyToGo()
@@ -108,13 +175,13 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}).Info()
 			run, err := s.runner.Up(chosen)
 			if err != nil {
-				chosen.Status = _task.Error
+				chosen.Status = _status.Error
 				cancelResources()
 				l.WithError(err).Error()
 				s.tasks.Put(chosen)
 				continue
 			}
-			chosen.Status = _task.Running
+			chosen.Status = _status.Running
 			chosen.Run = run
 			s.tasks.Put(chosen)
 
@@ -129,7 +196,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 				Id:     chosen.Id,
 			})
 			s.lock.Unlock()
-			go func(ctx context.Context, task *task.Task, run _task.Run, cleanup func()) {
+			go func(ctx context.Context, task *task.Task, run _run.Run, cleanup func()) {
 				defer cleanup()
 				status, err := run.Wait(ctx)
 				if err != nil {
@@ -183,7 +250,7 @@ func (s *Scheduler) readyToGo() []*_task.Task {
 	defer s.lock.RUnlock()
 	s.tasks.ForEach(func(task *_task.Task) error {
 		// enough CPU, enough RAM, Start date is okay
-		if task.Start.Before(now) && task.Status == _task.Waiting && s.resources.IsDoable(task.CPU, task.RAM) {
+		if task.Start.Before(now) && task.Status == _status.Waiting && s.resources.IsDoable(task.CPU, task.RAM) {
 			tasks = append(tasks, task)
 		}
 		return nil
@@ -200,7 +267,7 @@ func (s *Scheduler) next() *_task.Task {
 	defer s.lock.RUnlock()
 	tasks := make(_task.TaskByStart, 0)
 	s.tasks.ForEach(func(task *_task.Task) error {
-		if task.Status == _task.Waiting {
+		if task.Status == _status.Waiting {
 			tasks = append(tasks, task)
 		}
 		return nil
@@ -218,7 +285,7 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 	// TODO: find a way to generate a Cancel method when getting the task from
 	// the memory store
 	task.Cancel = func() {
-		task.Status = _task.Canceled
+		task.Status = _status.Canceled
 	}
 	if err != nil {
 		return err
@@ -226,10 +293,10 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 	if task == nil {
 		return errors.New("Unknown id")
 	}
-	if task.Status == _task.Running {
+	if task.Status == _status.Running {
 		task.Cancel()
 	}
-	task.Status = _task.Canceled
+	task.Status = _status.Canceled
 	task.Mtime = time.Now()
 	s.tasks.Put(task)
 	return nil
@@ -245,7 +312,7 @@ func (s *Scheduler) Flush(age time.Duration) int {
 	now := time.Now()
 	i := 0
 	s.tasks.DeleteWithClause(func(task *_task.Task) bool {
-		if task.Status != _task.Running && task.Status != _task.Waiting && now.Sub(task.Mtime) > age {
+		if task.Status != _status.Running && task.Status != _status.Waiting && now.Sub(task.Mtime) > age {
 			i++
 			return true
 		}

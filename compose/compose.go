@@ -2,6 +2,7 @@ package compose
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,12 +12,17 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 	"github.com/factorysh/batch-scheduler/task"
+	"github.com/factorysh/batch-scheduler/task/action"
+	_run "github.com/factorysh/batch-scheduler/task/run"
 	"gopkg.in/yaml.v3"
 )
 
 func init() {
-	task.ActionsRegistry["compose"] = func() task.Action {
+	task.ActionsRegistry["compose"] = func() action.Action {
 		return NewCompose()
 	}
 }
@@ -190,7 +196,7 @@ func (c Compose) guessMainContainer() (string, error) {
 }
 
 // Up compose action
-func (c Compose) Up(workingDirectory string, environments map[string]string) (task.Run, error) {
+func (c Compose) Up(workingDirectory string, environments map[string]string) (_run.Run, error) {
 	err := lazyEnsureBin()
 	if err != nil {
 		return nil, err
@@ -242,23 +248,34 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (ta
 
 	// FIXME, use docker API, not the cli
 	dir := strings.Split(workingDirectory, "/")
-	id := fmt.Sprintf("%s_%s_1", dir[len(dir)-1], main)
-	fmt.Println(id)
-	cmd = exec.Command("docker", "inspect", "--format", "{{ .Id }}", id)
-	stdout.Reset()
-	stderr.Reset()
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err = cmd.Run()
-	out := stdout.String()
-	fmt.Println(out)
-	fmt.Println(stderr.String())
+
+	cli, err := client.NewEnvClient()
 	if err != nil {
 		return nil, err
 	}
 
+	containers, err := cli.ContainerList(context.Background(),
+		types.ContainerListOptions{
+			Filters: filters.NewArgs(
+				filters.KeyValuePair{
+					Key:   "label",
+					Value: fmt.Sprintf("com.docker.compose.service=%s", main),
+				},
+				filters.KeyValuePair{
+					Key:   "label",
+					Value: fmt.Sprintf("com.docker.compose.project=%s", dir[len(dir)-1]),
+				}),
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(containers) != 1 {
+		return nil, fmt.Errorf("Multiple containers sharing the same service and project")
+	}
+
 	return &DockerRun{
 		Path: workingDirectory,
-		Id:   strings.Trim(out, "\n "),
+		Id:   containers[0].ID,
 	}, err
 }

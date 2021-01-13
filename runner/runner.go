@@ -5,6 +5,7 @@ import (
 	"path"
 
 	"github.com/factorysh/batch-scheduler/task"
+	"github.com/factorysh/batch-scheduler/task/run"
 )
 
 type Runner struct {
@@ -16,7 +17,7 @@ func New(home string) *Runner {
 }
 
 // Up a Task
-func (c *Runner) Up(task *task.Task) (task.Run, error) {
+func (c *Runner) Up(task *task.Task) (run.Run, error) {
 	pwd := path.Join(c.Home, task.Id.String())
 	err := os.Mkdir(pwd, 0750)
 	if err != nil && os.IsNotExist(err) {
