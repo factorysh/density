@@ -3,13 +3,14 @@ package compose
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	cmps "github.com/factorysh/batch-scheduler/compose"
 	"github.com/factorysh/batch-scheduler/task"
 )
 
 func TaskFromCompose(com *cmps.Compose) (*task.Task, error) {
-	cfgRaw, ok := com.Services["x-batch"]
+	cfgRaw, ok := com.X["x-batch"]
 	if !ok {
 		return nil, errors.New("Where is my x-batch?")
 	}
@@ -27,5 +28,14 @@ func TaskFromCompose(com *cmps.Compose) (*task.Task, error) {
 		}
 		t.Retry = rr
 	}
+	maxExTime, ok := cfg["max_execution_time"].(string)
+	if ok {
+		mm, err := time.ParseDuration(maxExTime)
+		if err != nil {
+			return nil, err
+		}
+		t.MaxExectionTime = mm
+	}
+
 	return t, nil
 }

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"sync/atomic"
 	"time"
+
+	"github.com/factorysh/batch-scheduler/task/run"
+	_status "github.com/factorysh/batch-scheduler/task/status"
 )
 
 // DummyAction is the most basic action, used for tests and illustration purpose
@@ -29,22 +32,34 @@ type DummyRun struct {
 	da *DummyAction
 }
 
-func (r *DummyRun) Wait(ctx context.Context) (Status, error) {
+func (r *DummyRun) ID() (string, error) {
+	return "some-id", nil
+}
+
+func (r *DummyRun) Status() (run.Status, int, error) {
+	return run.Running, 0, nil
+}
+
+func (r *DummyRun) RegisteredName() string {
+	return "dummy"
+}
+
+func (r *DummyRun) Wait(ctx context.Context) (_status.Status, error) {
 	waiter := make(chan interface{})
 	r.da.waiters = append(r.da.waiters, waiter)
-	var status Status
+	var status _status.Status
 	select {
 	case <-waiter:
 		fmt.Println("done")
-		status = Done
+		status = _status.Done
 	case <-ctx.Done():
 		switch ctx.Err() {
 		case context.Canceled:
 			fmt.Println("canceled")
-			status = Canceled
+			status = _status.Canceled
 		case context.DeadlineExceeded:
 			fmt.Println("timeout")
-			status = Timeout
+			status = _status.Timeout
 		}
 	}
 
@@ -56,7 +71,7 @@ func (r DummyRun) Down() error {
 }
 
 // Run action interface implementation
-func (da *DummyAction) Up(pwd string, environments map[string]string) (Run, error) {
+func (da *DummyAction) Up(pwd string, environments map[string]string) (run.Run, error) {
 	// Print name
 	fmt.Println("DummyAction :", da.Name)
 	if da.waiters == nil {

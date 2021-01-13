@@ -61,7 +61,7 @@ func (j *JSONStore) Length() int {
 
 // ForEach loops over kv
 func (j *JSONStore) ForEach(fn func(t *task.Task) error) error {
-	j.store.ForEach(func(k, v []byte) error {
+	return j.store.ForEach(func(k, v []byte) error {
 		// k is the UUID, serialized in v
 		t, err := parseTask(v)
 		if err != nil {
@@ -69,7 +69,6 @@ func (j *JSONStore) ForEach(fn func(t *task.Task) error) error {
 		}
 		return fn(t)
 	})
-	return nil
 }
 
 // DeleteWithClause batch delete

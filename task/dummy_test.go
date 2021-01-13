@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	_status "github.com/factorysh/batch-scheduler/task/status"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +31,7 @@ func TestDummy(t *testing.T) {
 	ctx := context.TODO()
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, Done, status)
+	assert.Equal(t, _status.Done, status)
 }
 
 func TestDummyCancel(t *testing.T) {
@@ -48,7 +49,7 @@ func TestDummyCancel(t *testing.T) {
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
 	fmt.Println(status.String())
-	assert.Equal(t, Canceled, status)
+	assert.Equal(t, _status.Canceled, status)
 }
 
 func TestDummyTimeout(t *testing.T) {
@@ -62,5 +63,5 @@ func TestDummyTimeout(t *testing.T) {
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
 	fmt.Println(status.String())
-	assert.Equal(t, Timeout, status)
+	assert.Equal(t, _status.Timeout, status)
 }

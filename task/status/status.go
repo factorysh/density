@@ -1,5 +1,5 @@
 //go:generate stringer -type=Status
-package task
+package status
 
 import (
 	"encoding/json"

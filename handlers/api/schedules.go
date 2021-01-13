@@ -89,16 +89,8 @@ func HandlePostSchedules(schd *scheduler.Scheduler, u *owner.Owner,
 			w.WriteHeader(http.StatusInternalServerError)
 			return nil, err
 		}
-
-		hub := sentry.GetHubFromContext(r.Context())
-		if hub != nil {
-			hub.WithScope(func(scope *sentry.Scope) {
-				scope.SetExtra("docker-compose.yml", content)
-			})
-		}
-
-		var myCompose rawCompose.Compose
-		err = yaml.Unmarshal(content, &myCompose)
+		myCompose := rawCompose.NewCompose()
+		err = yaml.Unmarshal(content, myCompose)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return nil, err
@@ -110,7 +102,7 @@ func HandlePostSchedules(schd *scheduler.Scheduler, u *owner.Owner,
 			return nil, err
 		}
 
-		t, err = compose.TaskFromCompose(&myCompose)
+		t, err = compose.TaskFromCompose(myCompose)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return nil, err

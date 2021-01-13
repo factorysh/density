@@ -107,11 +107,10 @@ func (bs *BoltStore) Length() int {
 }
 
 func (bs *BoltStore) ForEach(fn func(k, v []byte) error) error {
-	bs.Db.View(func(tx *bolt.Tx) error {
+	return bs.Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(DefaultBucket)
 		return b.ForEach(fn)
 	})
-	return nil
 }
 
 func (bs *BoltStore) DeleteWithClause(fn func(k, v []byte) bool) error {

@@ -7,21 +7,37 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/factorysh/batch-scheduler/task/action"
+	_run "github.com/factorysh/batch-scheduler/task/run"
+	"github.com/factorysh/batch-scheduler/task/status"
 	"github.com/google/uuid"
 )
 
 // ActionsRegistry register all Action implementation
-var ActionsRegistry map[string]func() Action
+var ActionsRegistry map[string]func() action.Action
+
+// RunRegistry register all Run implementation
+var RunRegistry map[string]func() _run.Run
 
 func init() {
 	if ActionsRegistry == nil {
-		ActionsRegistry = make(map[string]func() Action)
+		ActionsRegistry = make(map[string]func() action.Action)
 	}
-	ActionsRegistry["dummy"] = func() Action {
+	ActionsRegistry["dummy"] = func() action.Action {
 		return &DummyAction{
 			waiters: make([]chan interface{}, 0),
 		}
 	}
+
+	if RunRegistry == nil {
+		RunRegistry = make(map[string]func() _run.Run)
+	}
+	RunRegistry["dummy"] = func() _run.Run {
+		return &DummyRun{
+			da: nil,
+		}
+	}
+
 }
 
 // Task something to do
@@ -31,10 +47,10 @@ type Task struct {
 	MaxExectionTime time.Duration      `json:"max_execution_time"` // Max execution time
 	CPU             int                `json:"cpu"`                // CPU quota
 	RAM             int                `json:"ram"`                // RAM quota
-	Action          Action             `json:"action"`             // Action is an abstract, the thing to do
+	Action          action.Action      `json:"action"`             // Action is an abstract, the thing to do
 	Id              uuid.UUID          `json:"id"`                 // Id
 	Cancel          context.CancelFunc `json:"-"`                  // Cancel the action
-	Status          Status             `json:"status"`             // Status
+	Status          status.Status      `json:"status"`             // Status
 	Mtime           time.Time          `json:"mtime"`              // Modified time
 	Owner           string             `json:"owner"`              // Owner
 	Retry           int                `json:"retry"`              // Number of retry before crash
@@ -42,7 +58,7 @@ type Task struct {
 	Cron            string             `json:"cron"`               // Cron definition. Exclusive with Every
 	Environments    map[string]string  `json:"environments,omitempty"`
 	resourceCancel  context.CancelFunc `json:"-"`
-	Run             Run                `json:"run"`
+	Run             _run.Run           `json:"run"`
 }
 
 type Duration time.Duration
@@ -81,13 +97,14 @@ type RawTask struct {
 	RAM             int                        `json:"ram"`                // RAM quota
 	Action          map[string]json.RawMessage `json:"action"`             // Action is an abstract, the thing to do
 	Id              uuid.UUID                  `json:"id"`                 // Id
-	Status          Status                     `json:"status"`             // Status
+	Status          status.Status              `json:"status"`             // Status
 	Mtime           time.Time                  `json:"mtime"`              // Modified time
 	Owner           string                     `json:"owner"`              // Owner
 	Retry           int                        `json:"retry"`              // Number of retry before crash
 	Every           time.Duration              `json:"every"`              // Periodic execution. Exclusive with Cron
 	Cron            string                     `json:"cron"`               // Cron definition. Exclusive with Every
 	Environments    map[string]string          `json:"environments,omitempty"`
+	Run             map[string]json.RawMessage `json:"run"`
 }
 
 func (t *Task) UnmarshalJSON(b []byte) error {
@@ -110,6 +127,25 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 			}
 			t.Action = factory()
 			err := json.Unmarshal(v, t.Action)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	m := len(raw.Run)
+	switch {
+	case m == 0:
+		t.Run = nil
+	case m > 1:
+
+	default:
+		for k, v := range raw.Run {
+			factory, ok := RunRegistry[k]
+			if !ok {
+				return fmt.Errorf("Unregistered run : %s", k)
+			}
+			t.Run = factory()
+			err := json.Unmarshal(v, t.Run)
 			if err != nil {
 				return err
 			}
@@ -148,6 +184,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		Cron:            t.Cron,
 		Environments:    t.Environments,
 		Action:          make(map[string]json.RawMessage),
+		Run:             make(map[string]json.RawMessage),
 	}
 	if t.Action != nil {
 		rawAction, err := json.Marshal(t.Action)
@@ -157,11 +194,19 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		name := t.Action.RegisteredName()
 		raw.Action[name] = rawAction
 	}
+	if t.Run != nil {
+		rawRun, err := json.Marshal(t.Run)
+		if err != nil {
+			return nil, err
+		}
+		name := t.Run.RegisteredName()
+		raw.Run[name] = rawRun
+	}
 	return json.Marshal(raw)
 }
 
 // NewTask init a new task
-func NewTask(o string, a Action) Task {
+func NewTask(o string, a action.Action) Task {
 	t := New()
 	t.Owner = o
 	t.Action = a
@@ -172,7 +217,7 @@ func New() *Task {
 	return &Task{
 		CPU:    1,
 		RAM:    1,
-		Status: Waiting,
+		Status: status.Waiting,
 		Mtime:  time.Now(),
 	}
 }

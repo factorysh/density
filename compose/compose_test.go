@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/factorysh/batch-scheduler/task"
+	_task "github.com/factorysh/batch-scheduler/task"
+	_status "github.com/factorysh/batch-scheduler/task/status"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -150,7 +151,7 @@ func TestRunCompose(t *testing.T) {
 	ctx := context.TODO()
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, task.Done, status)
+	assert.Equal(t, _status.Done, status)
 }
 
 func TestRunComposeTimeout(t *testing.T) {
@@ -165,7 +166,7 @@ func TestRunComposeTimeout(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.TODO(), time.Second)
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, task.Timeout, status)
+	assert.Equal(t, _status.Timeout, status)
 }
 
 func TestRunComposeCancel(t *testing.T) {
@@ -184,7 +185,7 @@ func TestRunComposeCancel(t *testing.T) {
 	}()
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, task.Canceled, status)
+	assert.Equal(t, _status.Canceled, status)
 }
 
 func TestNewServiceGraph(t *testing.T) {
@@ -256,7 +257,7 @@ func TestUnfindableMain(t *testing.T) {
 }
 
 func TestJson(t *testing.T) {
-	var task task.Task
+	var task _task.Task
 	err := json.Unmarshal([]byte(`{
 		"cpu": 2,
 		"ram": 128,

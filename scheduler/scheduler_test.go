@@ -10,12 +10,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/factorysh/batch-scheduler/compose"
 	"github.com/factorysh/batch-scheduler/pubsub"
 	"github.com/factorysh/batch-scheduler/runner"
 	"github.com/factorysh/batch-scheduler/store"
 	_task "github.com/factorysh/batch-scheduler/task"
+	_status "github.com/factorysh/batch-scheduler/task/status"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func waitFor(ps *pubsub.PubSub, size int, clause func(evt pubsub.Event) bool) *sync.WaitGroup {
@@ -74,7 +77,7 @@ func TestScheduler(t *testing.T) {
 	assert.Len(t, s.readyToGo(), 0)
 	filtered = s.Filter("test")
 	assert.Len(t, filtered, 1)
-	assert.Equal(t, _task.Done, filtered[0].Status)
+	assert.Equal(t, _status.Done, filtered[0].Status)
 
 	// Second part
 
@@ -173,13 +176,93 @@ func TestTimeout(t *testing.T) {
 	// get task status from storage
 	fromStorage, err := s.tasks.Get(task.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, _task.Done, fromStorage.Status)
+	assert.Equal(t, _status.Done, fromStorage.Status)
 	assert.Equal(t, s.tasks.Length(), 1)
 	s.tasks.ForEach(func(tt *_task.Task) error {
-		assert.NotEqual(t, _task.Waiting, tt.Status)
-		assert.NotEqual(t, _task.Running, tt.Status)
+		assert.NotEqual(t, _status.Waiting, tt.Status)
+		assert.NotEqual(t, _status.Running, tt.Status)
 		return nil
 	})
+}
+
+func TestLoad(t *testing.T) {
+	// can't run in CI since access to docker host can be limited
+	if os.Getenv("CI") != "" {
+		t.Skip()
+	}
+
+	// compose template
+	composeTemplate := `
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "sh -c 'sleep %d && echo world'"
+x-batch:
+  max_execution_time: 5s
+`
+	c1 := compose.NewCompose()
+	err := yaml.Unmarshal([]byte(fmt.Sprintf(composeTemplate, 0)), &c1)
+	assert.NoError(t, err)
+
+	c2 := compose.NewCompose()
+	err = yaml.Unmarshal([]byte(fmt.Sprintf(composeTemplate, 5)), &c2)
+	assert.NoError(t, err)
+
+	// setting up the scheduler
+	dir, err := ioutil.TempDir(os.TempDir(), "scheduler-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	store, err := store.NewBoltStore(fmt.Sprintf("%s/bbolt.store", dir))
+	assert.NoError(t, err)
+	s := New(NewResources(4, 16*1024), runner.New(dir), store)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go s.Start(ctx)
+
+	// init tasks
+	tasks := [2]_task.Task{
+		{
+			Start:           time.Now(),
+			CPU:             2,
+			RAM:             256,
+			MaxExectionTime: 1 * time.Second,
+			Action:          c1,
+		},
+		{
+			Start:           time.Now(),
+			CPU:             2,
+			RAM:             256,
+			MaxExectionTime: 1 * time.Second,
+			Action:          c2,
+		},
+	}
+
+	uuids := make([]uuid.UUID, 0)
+	for _, task := range tasks {
+		uuid, err := s.Add(&task)
+		assert.NoError(t, err)
+		uuids = append(uuids, uuid)
+	}
+
+	// stop the scheduler, like a restart
+	s.stop <- true
+	time.Sleep(time.Duration(time.Second))
+
+	// on restart, load is called to refresh state
+	err = s.Load()
+	assert.NoError(t, err)
+
+	// first one should be finished
+	task, err := s.tasks.Get(uuids[0])
+	assert.NoError(t, err)
+	assert.Equal(t, _status.Done, task.Status)
+
+	// second one shoud be running
+	task, err = s.tasks.Get(uuids[1])
+	assert.NoError(t, err)
+	assert.Equal(t, _status.Running, task.Status)
+
 }
 
 /*

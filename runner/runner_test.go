@@ -14,6 +14,7 @@ import (
 
 	_ "github.com/factorysh/batch-scheduler/compose" // register compose.Compose as task.Action
 	_task "github.com/factorysh/batch-scheduler/task"
+	_status "github.com/factorysh/batch-scheduler/task/status"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,7 +55,7 @@ func TestRunner(t *testing.T) {
 	ctx := context.TODO()
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, _task.Done, status)
+	assert.Equal(t, _status.Done, status)
 	cmd := exec.Command("docker-compose", "logs", "--no-color", "--tail=1", "hello")
 	cmd.Dir = path.Join(f, task.Id.String())
 	var stdout bytes.Buffer
