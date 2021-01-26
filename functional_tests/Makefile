@@ -1,6 +1,9 @@
 test: venv
 	./venv/bin/pytest .
 
+start:
+	AUTH_KEY=s3cr3t ../bin/batch-scheduler
+
 venv:
 	python3 -m venv venv
 	./venv/bin/pip install -U pip wheel
