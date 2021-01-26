@@ -21,3 +21,12 @@ def test_home(session):
 def test_schedules(session):
     r = session.get('http://localhost:8042/api/schedules')
     assert r.status_code == 200
+    r = session.post('http://localhost:8042/api/schedules', files={
+        'docker-compose': '''
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "echo world"
+        '''})
+    assert r.status_code == 200
