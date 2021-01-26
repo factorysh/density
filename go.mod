@@ -12,12 +12,12 @@ require (
 	github.com/getsentry/sentry-go v0.7.0
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/google/go-cmp v0.5.0 // indirect
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/sirupsen/logrus v1.7.0
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	go.etcd.io/bbolt v1.3.5
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
