@@ -2,6 +2,7 @@ package compose
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -252,4 +253,24 @@ func TestUnfindableMain(t *testing.T) {
 	depths := graph.ByServiceDepth()
 	_, err = depths.findLeader()
 	assert.EqualError(t, err, "Leader ambiguity between nodes rails and sidekiq")
+}
+
+func TestJson(t *testing.T) {
+	var task task.Task
+	err := json.Unmarshal([]byte(`{
+		"cpu": 2,
+		"ram": 128,
+		"action": {
+			"compose": {
+				"version": "3",
+				"services": {
+					"hello": {
+						"image":"busybox:latest",
+						"command": "echo World"
+					}
+				}
+			}
+		}
+	}`), &task)
+	assert.NoError(t, err)
 }
