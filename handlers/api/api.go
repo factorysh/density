@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/factorysh/batch-scheduler/middlewares"
@@ -38,7 +39,12 @@ func wrapMyHandler(schd *scheduler.Scheduler, handler func(*scheduler.Scheduler,
 		}
 		data, err := handler(schd, u, w, r)
 		if err != nil {
-			hub.CaptureException(err)
+			// FIXME correct error handling
+			if hub == nil {
+				fmt.Println("Error:", err)
+			} else {
+				hub.CaptureException(err)
+			}
 			return
 		}
 		json.NewEncoder(w).Encode(data)

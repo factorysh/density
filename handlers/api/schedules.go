@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -58,51 +59,64 @@ func HandlePostSchedules(schd *scheduler.Scheduler, u *owner.Owner,
 	vars := mux.Vars(r)
 	o, explicit := vars[owner.OWNER]
 
-	err := r.ParseMultipartForm(1 << 20)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return nil, err
-	}
+	t := new(task.Task)
 
-	file, _, err := r.FormFile("docker-compose")
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return nil, err
-	}
-	defer file.Close()
+	switch r.Header.Get("Content-Type") {
+	case "application/json":
+		err := json.NewDecoder(r.Body).Decode(t)
+		r.Body.Close()
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return nil, err
+		}
+	default:
 
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
-	}
+		err := r.ParseMultipartForm(1 << 20)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return nil, err
+		}
 
-	hub := sentry.GetHubFromContext(r.Context())
-	if hub != nil {
-		hub.WithScope(func(scope *sentry.Scope) {
-			scope.SetExtra("docker-compose.yml", content)
-		})
-	}
+		file, _, err := r.FormFile("docker-compose")
+		defer file.Close()
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return nil, err
+		}
 
-	var myCompose rawCompose.Compose
-	err = yaml.Unmarshal(content, &myCompose)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
-	}
+		content, err := ioutil.ReadAll(file)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return nil, err
+		}
 
-	err = myCompose.Validate()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
-	}
+		hub := sentry.GetHubFromContext(r.Context())
+		if hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetExtra("docker-compose.yml", content)
+			})
+		}
 
-	t, err := compose.TaskFromCompose(&myCompose)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
-	}
+		var myCompose rawCompose.Compose
+		err = yaml.Unmarshal(content, &myCompose)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return nil, err
+		}
 
+		err = myCompose.Validate()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return nil, err
+		}
+
+		t, err = compose.TaskFromCompose(&myCompose)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return nil, err
+		}
+
+	}
 	// unpriviledged user can't create explicit job
 	if !u.Admin && explicit {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -124,7 +138,7 @@ func HandlePostSchedules(schd *scheduler.Scheduler, u *owner.Owner,
 	}
 
 	// add tasks to current tasks
-	_, err = schd.Add(t)
+	_, err := schd.Add(t)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil, err
