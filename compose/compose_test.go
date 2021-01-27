@@ -260,6 +260,7 @@ func TestJson(t *testing.T) {
 	err := json.Unmarshal([]byte(`{
 		"cpu": 2,
 		"ram": 128,
+		"max_execution_time": "30s",
 		"action": {
 			"compose": {
 				"version": "3",

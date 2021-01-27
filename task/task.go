@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -44,10 +45,38 @@ type Task struct {
 	Run             Run                `json:"run"`
 }
 
+type Duration time.Duration
+
+func (d Duration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(d).String())
+}
+
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	var v interface{}
+	err := json.Unmarshal(b, &v)
+	if err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case float64:
+		*d = Duration(time.Duration(value))
+		return nil
+	case string:
+		tmp, err := time.ParseDuration(value)
+		if err != nil {
+			return err
+		}
+		*d = Duration(tmp)
+		return nil
+	default:
+		return errors.New("invalid duration")
+	}
+}
+
 type RawTask struct {
 	Start           time.Time                  `json:"start"`              // Start time
-	MaxWaitTime     time.Duration              `json:"max_wait_time"`      // Max wait time before starting Action
-	MaxExectionTime time.Duration              `json:"max_execution_time"` // Max execution time
+	MaxWaitTime     Duration                   `json:"max_wait_time"`      // Max wait time before starting Action
+	MaxExectionTime Duration                   `json:"max_execution_time"` // Max execution time
 	CPU             int                        `json:"cpu"`                // CPU quota
 	RAM             int                        `json:"ram"`                // RAM quota
 	Action          map[string]json.RawMessage `json:"action"`             // Action is an abstract, the thing to do
@@ -87,8 +116,8 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 		}
 	}
 	t.Start = raw.Start
-	t.MaxWaitTime = raw.MaxWaitTime
-	t.MaxExectionTime = raw.MaxExectionTime
+	t.MaxWaitTime = time.Duration(raw.MaxWaitTime)
+	t.MaxExectionTime = time.Duration(raw.MaxExectionTime)
 	t.CPU = raw.CPU
 	t.RAM = raw.RAM
 	t.Id = raw.Id
@@ -106,8 +135,8 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 func (t *Task) MarshalJSON() ([]byte, error) {
 	raw := RawTask{
 		Start:           t.Start,
-		MaxWaitTime:     t.MaxWaitTime,
-		MaxExectionTime: t.MaxExectionTime,
+		MaxWaitTime:     Duration(t.MaxWaitTime),
+		MaxExectionTime: Duration(t.MaxExectionTime),
 		CPU:             t.CPU,
 		RAM:             t.RAM,
 		Id:              t.Id,
