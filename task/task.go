@@ -40,7 +40,7 @@ type Task struct {
 	Retry           int                `json:"retry"`              // Number of retry before crash
 	Every           time.Duration      `json:"every"`              // Periodic execution. Exclusive with Cron
 	Cron            string             `json:"cron"`               // Cron definition. Exclusive with Every
-	Environments    map[string]string  `json:"environments"`
+	Environments    map[string]string  `json:"environments,omitempty"`
 	resourceCancel  context.CancelFunc `json:"-"`
 	Run             Run                `json:"run"`
 }
@@ -87,7 +87,7 @@ type RawTask struct {
 	Retry           int                        `json:"retry"`              // Number of retry before crash
 	Every           time.Duration              `json:"every"`              // Periodic execution. Exclusive with Cron
 	Cron            string                     `json:"cron"`               // Cron definition. Exclusive with Every
-	Environments    map[string]string          `json:"environments"`
+	Environments    map[string]string          `json:"environments,omitempty"`
 }
 
 func (t *Task) UnmarshalJSON(b []byte) error {
