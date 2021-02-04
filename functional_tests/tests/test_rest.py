@@ -32,10 +32,12 @@ services:
   hello:
     image: "busybox:latest"
     command: "echo world"
+x-batch:
+  max_execution_time: 3s
         """
         },
     )
-    assert r.status_code == 200
+    assert r.status_code == 201
 
 
 def test_json(session):
