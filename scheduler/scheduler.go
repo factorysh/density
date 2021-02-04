@@ -282,11 +282,21 @@ func (s *Scheduler) next() *_task.Task {
 // Cancel a task
 func (s *Scheduler) Cancel(id uuid.UUID) error {
 	task, err := s.tasks.Get(id)
+	if err != nil {
+		return err
+	}
+
+	if task == nil {
+		return errors.New("Unknown id")
+	}
+
 	// TODO: find a way to generate a Cancel method when getting the task from
 	// the memory store
 	task.Cancel = func() {
 		task.Status = _status.Canceled
 	}
+
+	err = task.Run.Down()
 	if err != nil {
 		return err
 	}
@@ -298,10 +308,6 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 	}
 	task.Status = _status.Canceled
 	task.Mtime = time.Now()
-	err = task.Run.Down()
-	if err != nil {
-		return err
-	}
 	s.tasks.Put(task)
 	return nil
 }
