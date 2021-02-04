@@ -92,7 +92,7 @@ func (d *DockerRun) Down() error {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	cmd := exec.Command("docker-compose", "down")
+	cmd := exec.Command("docker-compose", "down", "--remove-orphans")
 	cmd.Dir = d.Path
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
