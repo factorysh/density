@@ -298,6 +298,10 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 	}
 	task.Status = _status.Canceled
 	task.Mtime = time.Now()
+	err = task.Run.Down()
+	if err != nil {
+		return err
+	}
 	s.tasks.Put(task)
 	return nil
 }
