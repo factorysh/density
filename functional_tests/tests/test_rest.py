@@ -1,5 +1,8 @@
 import requests
-from pytest import fixture
+import json
+import time
+import docker
+from pytest import fixture, raises
 import jwt
 
 
@@ -62,3 +65,43 @@ def test_json(session):
     for k, v in task.items():
         if k != "max_execution_time":  # 120s become 2m0s
             assert jr[k] == v  # information is not altered
+
+
+def test_prune_on_cancel(session):
+    r = session.get("http://localhost:8042/api/schedules")
+    assert r.status_code == 200
+    r = session.post(
+        "http://localhost:8042/api/schedules",
+        files={
+            "docker-compose": """
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "sh -c 'sleep 60s && echo world'"
+x-batch:
+  max_execution_time: 50s
+        """
+        },
+    )
+
+    assert r.status_code == 201
+    resp = json.loads(r.text)
+    id = resp["id"]
+
+    cli = docker.from_env()
+    tries = 5
+    for tick in range(0, tries):
+        try:
+            time.sleep(0.5)
+            ct = cli.containers.get("%s_hello_1" % id)
+            break
+        except Exception as e:
+            if tick == tries - 1:
+                raise Exception("Can't find container")
+            print(e)
+
+    r = session.delete(
+        "http://localhost:8042/api/schedules/%s" % id
+    )
+    assert r.status_code == 204
