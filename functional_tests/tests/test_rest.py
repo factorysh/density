@@ -101,7 +101,11 @@ x-batch:
                 raise Exception("Can't find container")
             print(e)
 
+    time.sleep(1)
     r = session.delete(
         "http://localhost:8042/api/schedules/%s" % id
     )
     assert r.status_code == 204
+    time.sleep(1)
+    with raises(docker.errors.NotFound):
+        cli.containers.get("%s_hello_1" % id)
