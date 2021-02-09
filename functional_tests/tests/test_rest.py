@@ -69,7 +69,9 @@ def test_json(session):
 
 def test_prune_on_cancel(session):
     testcases = [{"name": "without wait for",
-                  "status": 202, "wait_for": False}]
+                  "status": 202, "wait_for": False},
+                 {"name": "with wait for",
+                  "status": 204, "wait_for": True}]
 
     for case in testcases:
         r = session.get("http://localhost:8042/api/schedules")
