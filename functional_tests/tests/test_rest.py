@@ -78,9 +78,9 @@ version: '3'
 services:
   hello:
     image: "busybox:latest"
-    command: "sh -c 'sleep 60s && echo world'"
+    command: "sh -c 'sleep 2 && echo world'"
 x-batch:
-  max_execution_time: 50s
+  max_execution_time: 3s
         """
         },
     )
@@ -105,7 +105,4 @@ x-batch:
     r = session.delete(
         "http://localhost:8042/api/schedules/%s" % id
     )
-    assert r.status_code == 204
-    time.sleep(1)
-    with raises(docker.errors.NotFound):
-        cli.containers.get("%s_hello_1" % id)
+    assert r.status_code == 202
