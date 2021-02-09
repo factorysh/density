@@ -149,12 +149,13 @@ func HandleDeleteSchedules(schd *scheduler.Scheduler, u *owner.Owner,
 	j, _ := vars[JOB]
 
 	uuid, err := uuid.Parse(j)
-	err = schd.Cancel(uuid)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil, err
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	go schd.Cancel(uuid)
+
+	w.WriteHeader(http.StatusAccepted)
 	return nil, nil
 }
