@@ -145,6 +145,7 @@ func HandlePostSchedules(schd *scheduler.Scheduler, u *owner.Owner,
 // HandleDeleteSchedules handle a delete on schedules
 func HandleDeleteSchedules(schd *scheduler.Scheduler, u *owner.Owner,
 	w http.ResponseWriter, r *http.Request) (interface{}, error) {
+	params := r.URL.Query()
 	vars := mux.Vars(r)
 	j, _ := vars[JOB]
 
@@ -154,8 +155,18 @@ func HandleDeleteSchedules(schd *scheduler.Scheduler, u *owner.Owner,
 		return nil, err
 	}
 
-	go schd.Cancel(uuid)
+	if _, wait := params["wait_for"]; wait {
+		err := schd.Cancel(uuid)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return nil, err
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return nil, nil
+	}
 
+	go schd.Cancel(uuid)
 	w.WriteHeader(http.StatusAccepted)
+
 	return nil, nil
 }
