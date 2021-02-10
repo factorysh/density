@@ -164,54 +164,58 @@ func (s *Scheduler) Start(ctx context.Context) {
 				s.events <- new(interface{})
 			}()
 		} else { // Something todo
-			s.lock.Lock()
-			chosen := todos[0]
-			ctxResources, cancelResources := context.WithCancel(context.TODO())
-			s.resources.Consume(ctxResources, chosen.CPU, chosen.RAM)
-			l.WithFields(log.Fields{
-				"cpu":     s.resources.cpu,
-				"ram":     s.resources.ram,
-				"process": s.resources.processes,
-			}).Info()
-			run, err := s.runner.Up(chosen)
-			if err != nil {
-				chosen.Status = _status.Error
-				cancelResources()
-				l.WithError(err).Error()
-				s.tasks.Put(chosen)
-				continue
-			}
-			chosen.Status = _status.Running
-			chosen.Run = run
-			s.tasks.Put(chosen)
-
-			ctx, cancel := context.WithTimeout(context.TODO(), chosen.MaxExectionTime)
-
-			cleanup := func() {
-				cancel()
-				cancelResources()
-			}
-			s.Pubsub.Publish(pubsub.Event{
-				Action: chosen.Status.String(),
-				Id:     chosen.Id,
-			})
-			s.lock.Unlock()
-			go func(ctx context.Context, task *task.Task, run _run.Run, cleanup func()) {
-				defer cleanup()
-				status, err := run.Wait(ctx)
-				if err != nil {
-					l.WithError(err).Error()
-				}
-				task.Status = status
-				s.Pubsub.Publish(pubsub.Event{
-					Action: task.Status.String(),
-					Id:     task.Id,
-				})
-				s.tasks.Put(task)
-				s.events <- new(interface{}) // a slot is now free, let's try to full it
-			}(ctx, chosen, run, cleanup)
+			s.execTask(todos[0])
 		}
 	}
+}
+
+// Exec chosen task
+func (s *Scheduler) execTask(chosen *_task.Task) {
+	s.lock.Lock()
+	ctxResources, cancelResources := context.WithCancel(context.TODO())
+	s.resources.Consume(ctxResources, chosen.CPU, chosen.RAM)
+	log.WithFields(log.Fields{
+		"cpu":     s.resources.cpu,
+		"ram":     s.resources.ram,
+		"process": s.resources.processes,
+	}).Info()
+	run, err := s.runner.Up(chosen)
+	if err != nil {
+		chosen.Status = _status.Error
+		cancelResources()
+		log.WithError(err).Error()
+		s.tasks.Put(chosen)
+		return
+	}
+	chosen.Status = _status.Running
+	chosen.Run = run
+	s.tasks.Put(chosen)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), chosen.MaxExectionTime)
+
+	cleanup := func() {
+		cancel()
+		cancelResources()
+	}
+	s.Pubsub.Publish(pubsub.Event{
+		Action: chosen.Status.String(),
+		Id:     chosen.Id,
+	})
+	s.lock.Unlock()
+	go func(ctx context.Context, task *task.Task, run _run.Run, cleanup func()) {
+		defer cleanup()
+		status, err := run.Wait(ctx)
+		if err != nil {
+			log.WithError(err).Error()
+		}
+		task.Status = status
+		s.Pubsub.Publish(pubsub.Event{
+			Action: task.Status.String(),
+			Id:     task.Id,
+		})
+		s.tasks.Put(task)
+		s.events <- new(interface{}) // a slot is now free, let's try to full it
+	}(ctx, chosen, run, cleanup)
 }
 
 // List all the tasks associated with this scheduler
