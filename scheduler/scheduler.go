@@ -98,6 +98,8 @@ func (s *Scheduler) Load() error {
 		switch status {
 		case _run.Running:
 			fresh = _status.Running
+			// exec task will consume ressources, attach a watcher to exesting task without relaunching the entire task
+			s.execTask(t)
 		case _run.Dead:
 			fresh = _status.Error
 		case _run.Exited:
