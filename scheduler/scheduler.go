@@ -290,6 +290,10 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 		return errors.New("Unknown id")
 	}
 
+	if task.Status == _status.Canceled {
+		return nil
+	}
+
 	// TODO: find a way to generate a Cancel method when getting the task from
 	// the memory store
 	task.Cancel = func() {
