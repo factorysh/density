@@ -68,10 +68,14 @@ def test_json(session):
 
 
 def test_prune_on_cancel(session):
-    testcases = [{"name": "without wait for",
-                  "status": 202, "wait_for": False},
-                 {"name": "with wait for",
-                  "status": 204, "wait_for": True}]
+    testcases = [
+        {"name": "without wait for",
+         "status": 202, "wait_for": False, "flood": 0},
+        {"name": "with wait for",
+         "status": 204, "wait_for": True, "flood": 0},
+        {"name": "without wait for + flood",
+         "status": 202, "wait_for": False, "flood": 3, "flood_status": 202}
+    ]
 
     for case in testcases:
         r = session.get("http://localhost:8042/api/schedules")
@@ -110,12 +114,21 @@ x-batch:
 
         time.sleep(1)
 
-        url = "http://localhost:8042/api/schedules/%s" % id
-        if case["wait_for"]:
-            url = "%s?wait_for" % url
+        base_url = "http://localhost:8042/api/schedules/%s" % id
+        url_with_wait = "%s?wait_for" % base_url
 
-        r = session.delete(url)
+        if case["wait_for"]:
+            r = session.delete(url_with_wait)
+        else:
+            r = session.delete(base_url)
         assert r.status_code == case["status"], "status error in test %s" % case["name"]
+
+        if case["flood"] > 0:
+            for times in range(0, case["flood"]):
+                r = session.delete(base_url)
+                assert r.status_code == case["flood_status"], "flood status error in test %s" % case["name"]
+
         time.sleep(2)
+
         with raises(docker.errors.NotFound):
             ct = cli.containers.get("%s_hello_1" % id)
