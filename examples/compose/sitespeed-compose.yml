@@ -1,0 +1,11 @@
+version: '3'
+services:
+ sitespeed:
+    environment:
+      TZ: "Europe/Paris"
+    image: "sitespeedio/sitespeed.io:latest"
+    command: "https://bearstech.com"
+    volumes:
+      - "../output:/sitespeed.io/sitespeed-result/"
+x-batch:
+  max_execution_time: 5m
