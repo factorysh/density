@@ -1,5 +1,5 @@
 test: venv
-	./venv/bin/pytest .
+	./venv/bin/pytest -s .
 
 start:
 	AUTH_KEY=s3cr3t ../bin/batch-scheduler

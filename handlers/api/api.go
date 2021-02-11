@@ -15,6 +15,7 @@ import (
 func MuxAPI(schd *scheduler.Scheduler, authKey string) http.HandlerFunc {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/schedules/{owner}", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
+	router.HandleFunc("/api/schedule/{uuid}", wrapMyHandler(schd, HandleGetSchedule)).Methods(http.MethodGet)
 	router.HandleFunc("/api/schedules", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
 	router.HandleFunc("/api/schedules", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
 	router.HandleFunc("/api/schedules/{owner}", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)

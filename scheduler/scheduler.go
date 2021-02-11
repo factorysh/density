@@ -285,6 +285,10 @@ func (s *Scheduler) next() *_task.Task {
 	return tasks[0]
 }
 
+func (s *Scheduler) GetTask(id uuid.UUID) (*_task.Task, error) {
+	return s.tasks.Get(id)
+}
+
 // Cancel a task
 func (s *Scheduler) Cancel(id uuid.UUID) error {
 	task, err := s.tasks.Get(id)
