@@ -19,6 +19,9 @@ var ActionsRegistry map[string]func() action.Action
 // RunRegistry register all Run implementation
 var RunRegistry map[string]func() _run.Run
 
+// UUID indentifier for tasks
+const UUID = "uuid"
+
 func init() {
 	if ActionsRegistry == nil {
 		ActionsRegistry = make(map[string]func() action.Action)
@@ -59,6 +62,44 @@ type Task struct {
 	Environments    map[string]string  `json:"environments,omitempty"`
 	resourceCancel  context.CancelFunc `json:"-"`
 	Run             _run.Run           `json:"run"`
+}
+
+// Resp represent a task that can be send directly on the wire
+type Resp struct {
+	Start           time.Time         `json:"start"`              // Start time
+	MaxWaitTime     time.Duration     `json:"max_wait_time"`      // Max wait time before starting Action
+	MaxExectionTime time.Duration     `json:"max_execution_time"` // Max execution time
+	CPU             int               `json:"cpu"`                // CPU quota
+	RAM             int               `json:"ram"`                // RAM quota
+	Id              uuid.UUID         `json:"id"`                 // Id
+	Status          status.Status     `json:"status"`             // Status
+	Mtime           time.Time         `json:"mtime"`              // Modified time
+	Owner           string            `json:"owner"`              // Owner
+	Retry           int               `json:"retry"`              // Number of retry before crash
+	Every           time.Duration     `json:"every"`              // Periodic execution. Exclusive with Cron
+	Cron            string            `json:"cron"`               // Cron definition. Exclusive with Every
+	Environments    map[string]string `json:"environments,omitempty"`
+}
+
+// ToTaskResp will Convert a Task to TaskResp
+func (t *Task) ToTaskResp() Resp {
+
+	return Resp{
+		Start:           t.Start,
+		MaxWaitTime:     t.MaxWaitTime,
+		MaxExectionTime: t.MaxExectionTime,
+		CPU:             t.CPU,
+		RAM:             t.RAM,
+		Id:              t.Id,
+		Status:          t.Status,
+		Mtime:           t.Mtime,
+		Owner:           t.Owner,
+		Retry:           t.Retry,
+		Every:           t.Every,
+		Cron:            t.Cron,
+		Environments:    t.Environments,
+	}
+
 }
 
 type Duration time.Duration

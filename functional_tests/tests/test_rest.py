@@ -132,3 +132,35 @@ x-batch:
 
         with raises(docker.errors.NotFound):
             ct = cli.containers.get("%s_hello_1" % id)
+
+
+def test_status(session):
+    r = session.get("http://localhost:8042/api/schedules")
+    assert r.status_code == 200
+    r = session.post(
+        "http://localhost:8042/api/schedules",
+        files={
+            "docker-compose":
+            """
+version: '3'
+services:
+    hello:
+        image: "busybox:latest"
+        command: "sh -c 'sleep 2 && echo world'"
+x-batch:
+    max_execution_time: 3s
+"""
+        },
+    )
+
+    assert r.status_code == 201
+    resp = json.loads(r.text)
+    id = resp["id"]
+
+    r = session.get("http://localhost:8042/api/schedule/%s" % id)
+    assert r.status_code == 200
+    assert r.json()["status"] == "Waiting"
+    time.sleep(2)
+    r = session.get("http://localhost:8042/api/schedule/%s" % id)
+    assert r.status_code == 200
+    assert r.json()["status"] == "Running"
