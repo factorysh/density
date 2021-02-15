@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/factorysh/batch-scheduler/config"
 	"github.com/factorysh/batch-scheduler/task"
 	"github.com/factorysh/batch-scheduler/task/action"
 	_run "github.com/factorysh/batch-scheduler/task/run"
@@ -143,25 +144,11 @@ func (c Compose) Validate() error {
 	if err != nil {
 		return err
 	}
-	tmpfile := os.Getenv("BATCH_TMP")
-	if tmpfile == "" {
-		tmpfile = "/tmp"
-	}
-	tmpdir, err := ioutil.TempDir(tmpfile, "")
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(tmpdir, 0750)
-	if err != nil {
-		return err
-	}
-	file, err := os.OpenFile(path.Join(tmpdir, "validator"), os.O_CREATE|os.O_WRONLY, 0640)
+	file, err := ioutil.TempFile(path.Join(config.GetDataDir(), "validator"), "validate-")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(file.Name())
-	defer os.Remove(tmpdir)
-
 	err = yaml.NewEncoder(file).Encode(c)
 	if err != nil {
 		return err
