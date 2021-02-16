@@ -122,11 +122,6 @@ func (c *Compose) UnmarshalYAML(value *yaml.Node) error {
 		}
 	}
 
-	err := c.SanitizeVolumes()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
