@@ -30,6 +30,8 @@ func init() {
 
 var composeIsHere bool = false
 
+const volumePrefix = "./volumes"
+
 // EnsureBin will ensure that docker-compose is found in $PATH
 func EnsureBin() error {
 	var name = "docker-compose"
@@ -117,6 +119,85 @@ func (c *Compose) UnmarshalYAML(value *yaml.Node) error {
 
 			c.X[k.Value] = xs
 
+		}
+	}
+
+	return nil
+}
+
+// SanitizeVolumes is used to ensure that volumes are plug the right way when Up is called
+func (c *Compose) SanitizeVolumes() error {
+	for key, srv := range c.Services {
+		service, ok := srv.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("Can't cast compose structure into a map %v", c.Services)
+		}
+
+		vols, has := service["volumes"]
+		if has {
+			volumes, ok := vols.([]interface{})
+			if !ok {
+				return fmt.Errorf("Can't cast volumes data into an array %v", vols)
+			}
+
+			sanitized := make([]string, len(volumes))
+			for i, vol := range volumes {
+				volume, ok := vol.(string)
+				if !ok {
+					return fmt.Errorf("Can't cast a volume entry into a string %v", vol)
+				}
+				err := checkVolumeRules(volume)
+				if err != nil {
+					return err
+				}
+
+				// if volume pass the check and do not starts with `./volumes`
+				if !strings.HasPrefix(volume, volumePrefix) {
+					parts := strings.Split(volume, ":")
+					// considered safe since checkVolumesRules will check that parts len is == 2
+					// overall structure is : ${volumePrefix}/${hostPath}:${containerPath}
+					sanitized[i] = fmt.Sprintf("%s%s%s:%s", volumePrefix, string(os.PathSeparator), strings.TrimLeft(parts[0], "./"), parts[1])
+				} else {
+					sanitized[i] = volume
+				}
+			}
+			// go for sanitized array
+			service["volumes"] = sanitized
+			// replace sanitized array
+			c.Services[key] = service
+		}
+	}
+
+	return nil
+}
+
+func checkVolumeRules(volume string) error {
+	// arbitraty default
+	maxDeepness := 10
+
+	// check that volume contains two parts
+	parts := strings.Split(volume, ":")
+	if len(parts) != 2 {
+		return fmt.Errorf("Volume %v do not contains two parts", volume)
+	}
+
+	// should start with "./"
+	if !strings.HasPrefix(volume, "./") {
+		return fmt.Errorf("Volume %v is not a local volume", volume)
+	}
+
+	// split host path on separator
+	hostParts := strings.Split(parts[0], string(os.PathSeparator))
+
+	// check max deepness
+	if len(hostParts) > maxDeepness {
+		return fmt.Errorf("Volume description %v reach deepnees max level %d", volume, maxDeepness)
+	}
+
+	// inside part (parts[0]) can't contain '..'
+	for _, part := range hostParts {
+		if part == ".." {
+			return fmt.Errorf("Path %v contains `..`", volume)
 		}
 	}
 

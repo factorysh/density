@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,6 +38,17 @@ version: '3'
 services:
   hello:
     command: "echo world"
+`
+const withVolumes = `
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "echo world"
+    volumes:
+      - ./some/path/on/the/host:/some/path/inside/the/container
+x-batch:
+  key: value
 `
 
 const withDependsCompose = `
@@ -254,6 +266,65 @@ func TestUnfindableMain(t *testing.T) {
 	depths := graph.ByServiceDepth()
 	_, err = depths.findLeader()
 	assert.EqualError(t, err, "Leader ambiguity between nodes rails and sidekiq")
+}
+
+func TestSanitizeVolumes(t *testing.T) {
+
+	cc := NewCompose()
+	err := yaml.Unmarshal([]byte(withVolumes), &cc)
+	assert.NoError(t, err)
+	err = cc.SanitizeVolumes()
+	assert.NoError(t, err)
+
+	for _, srv := range cc.Services {
+		service, ok := srv.(map[string]interface{})
+		assert.True(t, ok)
+		vols, has := service["volumes"]
+		assert.True(t, has)
+		volumes, ok := vols.([]string)
+		assert.True(t, ok)
+		for _, vol := range volumes {
+			assert.True(t, strings.HasPrefix(vol, "./volumes/some/path/on/the/host"))
+		}
+	}
+}
+
+func TestCheckRules(t *testing.T) {
+	tests := map[string]struct {
+		path string
+		err  error
+	}{
+		"root": {
+			path: "/root/in/not/valid:/inside/container",
+			err:  fmt.Errorf("Volume /root/in/not/valid:/inside/container is not a local volume"),
+		},
+		"with ..": {
+			path: "./some/../../path:/inside/container",
+			err:  fmt.Errorf("Path ./some/../../path:/inside/container contains `..`"),
+		},
+		"max deepness": {
+			path: "./some/very/long/a/b/c/d/e/f/g/path:/inside/container",
+			err:  fmt.Errorf("Volume description ./some/very/long/a/b/c/d/e/f/g/path:/inside/container reach deepnees max level 10"),
+		},
+		"valid path": {
+			path: "./this/is/a/valid/path:/inside/container",
+			err:  nil,
+		},
+	}
+
+	for tname, test := range tests {
+		tt := test
+		t.Run(tname, func(t *testing.T) {
+			t.Parallel()
+			err := checkVolumeRules(tt.path)
+			if tt.err != nil {
+				assert.Errorf(t, err, tt.err.Error())
+
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestJson(t *testing.T) {
