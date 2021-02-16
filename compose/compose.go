@@ -140,7 +140,7 @@ func (c *Compose) SanitizeVolumes() error {
 				return fmt.Errorf("Can't cast volumes data into an array %v", vols)
 			}
 
-			sanitized := make([]string, len(volumes))
+			sanitized := make([]interface{}, len(volumes))
 			for i, vol := range volumes {
 				volume, ok := vol.(string)
 				if !ok {

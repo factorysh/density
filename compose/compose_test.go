@@ -289,10 +289,12 @@ func TestSanitizeVolumes(t *testing.T) {
 		assert.True(t, ok)
 		vols, has := service["volumes"]
 		assert.True(t, has)
-		volumes, ok := vols.([]string)
+		volumes, ok := vols.([]interface{})
 		assert.True(t, ok)
 		for _, vol := range volumes {
-			assert.True(t, strings.HasPrefix(vol, "./volumes/some/path/on/the/host"))
+			volume, ok := vol.(string)
+			assert.True(t, ok)
+			assert.True(t, strings.HasPrefix(volume, "./volumes/some/path/on/the/host"))
 		}
 	}
 }
