@@ -130,6 +130,59 @@ func (c *Compose) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
+// Volume represent a basic docker compose volume struct
+type Volume struct {
+	hostPath      string
+	containerPath string
+	service       string
+}
+
+// GetVolumesForService is used to retreive a list of Volume struct from a service
+func (c *Compose) GetVolumesForService(name string) ([]Volume, error) {
+
+	srv, ok := c.Services[name]
+	if !ok {
+		return nil, fmt.Errorf("No service with name %s found", name)
+	}
+
+	service, ok := srv.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Can't cast service %s into a map", name)
+	}
+
+	vols, has := service["volumes"]
+	if !has {
+		return nil, nil
+	}
+
+	volumes, ok := vols.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Can't cast volumes %v into a map", vols)
+	}
+
+	// create array for all volumes
+	allVolumes := make([]Volume, len(volumes))
+	for i, vol := range volumes {
+		volume, ok := vol.(string)
+		if !ok {
+			return nil, fmt.Errorf("Can't cast volume %v into a volume string", vol)
+		}
+		// check that volume contains two parts
+		parts := strings.Split(volume, ":")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("Volume %v do not contains two parts", volume)
+		}
+		allVolumes[i] = Volume{
+			service:       name,
+			hostPath:      parts[0],
+			containerPath: parts[1],
+		}
+
+	}
+
+	return allVolumes, nil
+}
+
 // SanitizeVolumes is used to ensure that volumes are plug the right way when Up is called
 func (c *Compose) SanitizeVolumes() error {
 	for key, srv := range c.Services {

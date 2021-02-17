@@ -276,6 +276,57 @@ func TestUnfindableMain(t *testing.T) {
 	assert.EqualError(t, err, "Leader ambiguity between nodes rails and sidekiq")
 }
 
+func TestGetVolumesForService(t *testing.T) {
+	tests := map[string]struct {
+		serviceName string
+		input       string
+		err         error
+		expected    []Volume
+	}{
+		"valid": {
+			serviceName: "hello",
+			input:       withVolumes,
+			err:         nil,
+			expected: []Volume{
+				{
+					service:       "hello",
+					hostPath:      "./volumes/some/path/on/the/host",
+					containerPath: "/some/path/inside/the/container",
+				},
+			},
+		},
+		"no service": {
+			serviceName: "nop",
+			input:       withVolumes,
+			err:         fmt.Errorf("No service with name nop found"),
+			expected:    nil,
+		},
+		"service, no volume": {
+			serviceName: "hello",
+			input:       validCompose,
+			err:         nil,
+			expected:    nil,
+		},
+	}
+
+	for tname, test := range tests {
+		t.Run(tname, func(t *testing.T) {
+			cc := NewCompose()
+			err := yaml.Unmarshal([]byte(test.input), &cc)
+			assert.NoError(t, err)
+			vols, err := cc.GetVolumesForService(test.serviceName)
+
+			if test.err != nil {
+				assert.Errorf(t, test.err, err.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, test.expected, vols)
+			}
+
+		})
+	}
+}
+
 func TestSanitizeVolumes(t *testing.T) {
 
 	cc := NewCompose()
