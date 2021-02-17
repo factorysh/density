@@ -62,6 +62,52 @@ func lazyEnsureBin() error {
 	return nil
 }
 
+// Volume represent a basic docker compose volume struct
+type Volume struct {
+	hostPath      string
+	containerPath string
+	service       string
+}
+
+func (v Volume) checkVolumeRules() error {
+	maxDeepness := 10
+
+	// should start with "./"
+	if !strings.HasPrefix(v.hostPath, "./") {
+		return fmt.Errorf("Volume %v is not a local volume", v)
+	}
+
+	// split host path on separator
+	hostParts := strings.Split(v.hostPath, string(os.PathSeparator))
+
+	// check max deepness
+	if len(hostParts) > maxDeepness {
+		return fmt.Errorf("Volume description %v reach deepnees max level %d", v, maxDeepness)
+	}
+
+	// inside part (parts[0]) can't contain '..'
+	for _, part := range hostParts {
+		if part == ".." {
+			return fmt.Errorf("Path %v contains `..`", v.hostPath)
+		}
+	}
+
+	return nil
+}
+
+// addPrefix needs to be indempotent, if ./volumes is present, to prepend it another time
+func (v *Volume) addPrefix() {
+
+	if !strings.HasPrefix(v.hostPath, "./volumes") {
+		v.hostPath = fmt.Sprintf("./volumes/%s", strings.TrimLeft(v.hostPath, "./"))
+	}
+}
+
+// toVolumeString returns the content of a volume struct to a compose volume string
+func (v Volume) toVolumeString() string {
+	return fmt.Sprintf("%s:%s", v.hostPath, v.containerPath)
+}
+
 // Compose is a docker-compose project
 // FIXME there is more first level keys, like volume or networks
 type Compose struct {
@@ -130,15 +176,8 @@ func (c *Compose) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
-// Volume represent a basic docker compose volume struct
-type Volume struct {
-	hostPath      string
-	containerPath string
-	service       string
-}
-
-// GetVolumesForService is used to retreive a list of Volume struct from a service
-func (c *Compose) GetVolumesForService(name string) ([]Volume, error) {
+// getVolumesForService is used to retreive a list of Volume struct from a service
+func (c *Compose) getVolumesForService(name string) ([]Volume, error) {
 
 	srv, ok := c.Services[name]
 	if !ok {
@@ -186,77 +225,36 @@ func (c *Compose) GetVolumesForService(name string) ([]Volume, error) {
 // SanitizeVolumes is used to ensure that volumes are plug the right way when Up is called
 func (c *Compose) SanitizeVolumes() error {
 	for key, srv := range c.Services {
+		volumes, err := c.getVolumesForService(key)
+		if err != nil {
+			return err
+		}
+
+		if volumes == nil {
+			continue
+		}
+
 		service, ok := srv.(map[string]interface{})
 		if !ok {
 			return fmt.Errorf("Can't cast compose structure into a map %v", c.Services)
 		}
 
-		vols, has := service["volumes"]
-		if has {
-			volumes, ok := vols.([]interface{})
-			if !ok {
-				return fmt.Errorf("Can't cast volumes data into an array %v", vols)
+		sanitized := make([]interface{}, len(volumes))
+		for i, vol := range volumes {
+			err := vol.checkVolumeRules()
+			if err != nil {
+				return err
 			}
 
-			sanitized := make([]interface{}, len(volumes))
-			for i, vol := range volumes {
-				volume, ok := vol.(string)
-				if !ok {
-					return fmt.Errorf("Can't cast a volume entry into a string %v", vol)
-				}
-				err := checkVolumeRules(volume)
-				if err != nil {
-					return err
-				}
+			vol.addPrefix()
 
-				// if volume pass the check and do not starts with `./volumes`
-				if !strings.HasPrefix(volume, volumePrefix) {
-					parts := strings.Split(volume, ":")
-					// considered safe since checkVolumesRules will check that parts len is == 2
-					// overall structure is : ${volumePrefix}/${hostPath}:${containerPath}
-					sanitized[i] = fmt.Sprintf("%s%s%s:%s", volumePrefix, string(os.PathSeparator), strings.TrimLeft(parts[0], "./"), parts[1])
-				} else {
-					sanitized[i] = volume
-				}
-			}
-			// go for sanitized array
-			service["volumes"] = sanitized
-			// replace sanitized array
-			c.Services[key] = service
+			sanitized[i] = vol.toVolumeString()
 		}
-	}
 
-	return nil
-}
-
-func checkVolumeRules(volume string) error {
-	// arbitraty default
-	maxDeepness := 10
-
-	// check that volume contains two parts
-	parts := strings.Split(volume, ":")
-	if len(parts) != 2 {
-		return fmt.Errorf("Volume %v do not contains two parts", volume)
-	}
-
-	// should start with "./"
-	if !strings.HasPrefix(volume, "./") {
-		return fmt.Errorf("Volume %v is not a local volume", volume)
-	}
-
-	// split host path on separator
-	hostParts := strings.Split(parts[0], string(os.PathSeparator))
-
-	// check max deepness
-	if len(hostParts) > maxDeepness {
-		return fmt.Errorf("Volume description %v reach deepnees max level %d", volume, maxDeepness)
-	}
-
-	// inside part (parts[0]) can't contain '..'
-	for _, part := range hostParts {
-		if part == ".." {
-			return fmt.Errorf("Path %v contains `..`", volume)
-		}
+		// go for sanitized array
+		service["volumes"] = sanitized
+		// replace sanitized array
+		c.Services[key] = service
 	}
 
 	return nil

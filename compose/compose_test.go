@@ -314,7 +314,7 @@ func TestGetVolumesForService(t *testing.T) {
 			cc := NewCompose()
 			err := yaml.Unmarshal([]byte(test.input), &cc)
 			assert.NoError(t, err)
-			vols, err := cc.GetVolumesForService(test.serviceName)
+			vols, err := cc.getVolumesForService(test.serviceName)
 
 			if test.err != nil {
 				assert.Errorf(t, test.err, err.Error())
@@ -352,24 +352,40 @@ func TestSanitizeVolumes(t *testing.T) {
 
 func TestCheckRules(t *testing.T) {
 	tests := map[string]struct {
-		path string
-		err  error
+		volume Volume
+		err    error
 	}{
 		"root": {
-			path: "/root/in/not/valid:/inside/container",
-			err:  fmt.Errorf("Volume /root/in/not/valid:/inside/container is not a local volume"),
+			volume: Volume{
+				hostPath:      "/root/in/not/valid",
+				containerPath: "/inside/container",
+				service:       "hello",
+			},
+			err: fmt.Errorf("Volume /root/in/not/valid:/inside/container is not a local volume"),
 		},
 		"with ..": {
-			path: "./some/../../path:/inside/container",
-			err:  fmt.Errorf("Path ./some/../../path:/inside/container contains `..`"),
+			volume: Volume{
+				hostPath:      "./some/../../path",
+				containerPath: "/inside/container",
+				service:       "hello",
+			},
+			err: fmt.Errorf("Path ./some/../../path /inside/container contains `..`"),
 		},
 		"max deepness": {
-			path: "./some/very/long/a/b/c/d/e/f/g/path:/inside/container",
-			err:  fmt.Errorf("Volume description ./some/very/long/a/b/c/d/e/f/g/path:/inside/container reach deepnees max level 10"),
+			volume: Volume{
+				hostPath:      "./some/very/long/a/b/c/d/e/f/g/path",
+				containerPath: "/inside/container",
+				service:       "hello",
+			},
+			err: fmt.Errorf("Volume description ./some/very/long/a/b/c/d/e/f/g/path:/inside/container reach deepnees max level 10"),
 		},
 		"valid path": {
-			path: "./this/is/a/valid/path:/inside/container",
-			err:  nil,
+			volume: Volume{
+				hostPath:      "./this/is/a/valid/path:/inside/container",
+				containerPath: "/inside/container",
+				service:       "hello",
+			},
+			err: nil,
 		},
 	}
 
@@ -377,7 +393,7 @@ func TestCheckRules(t *testing.T) {
 		tt := test
 		t.Run(tname, func(t *testing.T) {
 			t.Parallel()
-			err := checkVolumeRules(tt.path)
+			err := tt.volume.checkVolumeRules()
 			if tt.err != nil {
 				assert.Errorf(t, err, tt.err.Error())
 
