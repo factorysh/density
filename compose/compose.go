@@ -319,6 +319,26 @@ func (c Compose) guessMainContainer() (string, error) {
 	return "", errors.New("Multiple services handling is not yet implemented")
 }
 
+func (c Compose) ensureVolumesInWD(workingDir string) error {
+
+	for key := range c.Services {
+		volumes, err := c.getVolumesForService(key)
+		if err != nil {
+			return err
+		}
+
+		for _, volume := range volumes {
+			fmt.Println(path.Join(workingDir, volume.hostPath))
+			err := os.MkdirAll(path.Join(workingDir, volume.hostPath), 0755)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // Up compose action
 func (c Compose) Up(workingDirectory string, environments map[string]string) (_run.Run, error) {
 	err := lazyEnsureBin()
@@ -353,6 +373,11 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (_r
 		}
 	}
 	f.Close()
+
+	err = c.ensureVolumesInWD(workingDirectory)
+	if err != nil {
+		return nil, err
+	}
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
