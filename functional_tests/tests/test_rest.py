@@ -23,11 +23,11 @@ def test_home(session):
     assert r.status_code == 404
 
 
-def test_schedules(session):
-    r = session.get("http://localhost:8042/api/schedules")
+def test_tasks(session):
+    r = session.get("http://localhost:8042/api/tasks")
     assert r.status_code == 200
     r = session.post(
-        "http://localhost:8042/api/schedules",
+        "http://localhost:8042/api/tasks",
         files={
             "docker-compose": """
 version: '3'
@@ -57,7 +57,7 @@ def test_json(session):
             }
         },
     }
-    r = session.post("http://localhost:8042/api/schedules", json=task)
+    r = session.post("http://localhost:8042/api/tasks", json=task)
     assert r.status_code == 201
     jr = r.json()
     assert jr["retry"] == 0
@@ -78,10 +78,10 @@ def test_prune_on_cancel(session):
     ]
 
     for case in testcases:
-        r = session.get("http://localhost:8042/api/schedules")
+        r = session.get("http://localhost:8042/api/tasks")
         assert r.status_code == 200
         r = session.post(
-            "http://localhost:8042/api/schedules",
+            "http://localhost:8042/api/tasks",
             files={
                 "docker-compose":
                 """
@@ -114,7 +114,7 @@ x-batch:
 
         time.sleep(1)
 
-        base_url = "http://localhost:8042/api/schedules/%s" % id
+        base_url = "http://localhost:8042/api/tasks/%s" % id
         url_with_wait = "%s?wait_for" % base_url
 
         if case["wait_for"]:
@@ -135,10 +135,10 @@ x-batch:
 
 
 def test_status(session):
-    r = session.get("http://localhost:8042/api/schedules")
+    r = session.get("http://localhost:8042/api/tasks")
     assert r.status_code == 200
     r = session.post(
-        "http://localhost:8042/api/schedules",
+        "http://localhost:8042/api/tasks",
         files={
             "docker-compose":
             """
@@ -157,10 +157,10 @@ x-batch:
     resp = json.loads(r.text)
     id = resp["id"]
 
-    r = session.get("http://localhost:8042/api/schedule/%s" % id)
+    r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
     assert r.json()["status"] == "Waiting"
     time.sleep(2)
-    r = session.get("http://localhost:8042/api/schedule/%s" % id)
+    r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
     assert r.json()["status"] == "Running"

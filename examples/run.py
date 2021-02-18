@@ -17,7 +17,7 @@ def session():
 
 # run job using provided session
 def run(session):
-    r = session.get("http://localhost:8042/api/schedules")
+    r = session.get("http://localhost:8042/api/tasks")
     assert r.status_code == 200
 
     with open("./compose/sitespeed-compose.yml", "r", encoding="utf-8") as compose:
@@ -25,7 +25,7 @@ def run(session):
         print(raw)
 
     r = session.post(
-        "http://localhost:8042/api/schedules",
+        "http://localhost:8042/api/tasks",
         files={"docker-compose": raw},
     )
 
