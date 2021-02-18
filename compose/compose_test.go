@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/factorysh/batch-scheduler/config"
 	_task "github.com/factorysh/batch-scheduler/task"
 	_status "github.com/factorysh/batch-scheduler/task/status"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +39,17 @@ version: '3'
 services:
   hello:
     command: "echo world"
+`
+const withVolumes = `
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "echo world"
+    volumes:
+      - ./some/path/on/the/host:/some/path/inside/the/container
+x-batch:
+  key: value
 `
 
 const withDependsCompose = `
@@ -106,6 +119,13 @@ services:
 `
 
 func TestValidate(t *testing.T) {
+	testDir := "/tmp/batch-scheduler-tests"
+	os.MkdirAll(testDir, 0655)
+	defer os.RemoveAll(testDir)
+	os.Setenv("DATA_DIR", testDir)
+	err := config.EnsureDataDirs()
+	assert.NoError(t, err)
+
 	tests := []struct {
 		input []byte
 		isOk  bool
@@ -254,6 +274,134 @@ func TestUnfindableMain(t *testing.T) {
 	depths := graph.ByServiceDepth()
 	_, err = depths.findLeader()
 	assert.EqualError(t, err, "Leader ambiguity between nodes rails and sidekiq")
+}
+
+func TestGetVolumesForService(t *testing.T) {
+	tests := map[string]struct {
+		serviceName string
+		input       string
+		err         error
+		expected    []Volume
+	}{
+		"valid": {
+			serviceName: "hello",
+			input:       withVolumes,
+			err:         nil,
+			expected: []Volume{
+				{
+					service:       "hello",
+					hostPath:      "./volumes/some/path/on/the/host",
+					containerPath: "/some/path/inside/the/container",
+				},
+			},
+		},
+		"no service": {
+			serviceName: "nop",
+			input:       withVolumes,
+			err:         fmt.Errorf("No service with name nop found"),
+			expected:    nil,
+		},
+		"service, no volume": {
+			serviceName: "hello",
+			input:       validCompose,
+			err:         nil,
+			expected:    nil,
+		},
+	}
+
+	for tname, test := range tests {
+		t.Run(tname, func(t *testing.T) {
+			cc := NewCompose()
+			err := yaml.Unmarshal([]byte(test.input), &cc)
+			assert.NoError(t, err)
+			vols, err := cc.getVolumesForService(test.serviceName)
+
+			if test.err != nil {
+				assert.Errorf(t, test.err, err.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, test.expected, vols)
+			}
+
+		})
+	}
+}
+
+func TestSanitizeVolumes(t *testing.T) {
+
+	cc := NewCompose()
+	err := yaml.Unmarshal([]byte(withVolumes), &cc)
+	assert.NoError(t, err)
+	err = cc.SanitizeVolumes()
+	assert.NoError(t, err)
+
+	for _, srv := range cc.Services {
+		service, ok := srv.(map[string]interface{})
+		assert.True(t, ok)
+		vols, has := service["volumes"]
+		assert.True(t, has)
+		volumes, ok := vols.([]interface{})
+		assert.True(t, ok)
+		for _, vol := range volumes {
+			volume, ok := vol.(string)
+			assert.True(t, ok)
+			assert.True(t, strings.HasPrefix(volume, "./volumes/some/path/on/the/host"))
+		}
+	}
+}
+
+func TestCheckRules(t *testing.T) {
+	tests := map[string]struct {
+		volume Volume
+		err    error
+	}{
+		"root": {
+			volume: Volume{
+				hostPath:      "/root/in/not/valid",
+				containerPath: "/inside/container",
+				service:       "hello",
+			},
+			err: fmt.Errorf("Volume /root/in/not/valid:/inside/container is not a local volume"),
+		},
+		"with ..": {
+			volume: Volume{
+				hostPath:      "./some/../../path",
+				containerPath: "/inside/container",
+				service:       "hello",
+			},
+			err: fmt.Errorf("Path ./some/../../path /inside/container contains `..`"),
+		},
+		"max deepness": {
+			volume: Volume{
+				hostPath:      "./some/very/long/a/b/c/d/e/f/g/path",
+				containerPath: "/inside/container",
+				service:       "hello",
+			},
+			err: fmt.Errorf("Volume description ./some/very/long/a/b/c/d/e/f/g/path:/inside/container reach deepnees max level 10"),
+		},
+		"valid path": {
+			volume: Volume{
+				hostPath:      "./this/is/a/valid/path:/inside/container",
+				containerPath: "/inside/container",
+				service:       "hello",
+			},
+			err: nil,
+		},
+	}
+
+	for tname, test := range tests {
+		tt := test
+		t.Run(tname, func(t *testing.T) {
+			t.Parallel()
+			err := tt.volume.checkVolumeRules()
+			if tt.err != nil {
+				assert.Errorf(t, err, tt.err.Error())
+
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestJson(t *testing.T) {

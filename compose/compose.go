@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/factorysh/batch-scheduler/config"
 	"github.com/factorysh/batch-scheduler/task"
 	"github.com/factorysh/batch-scheduler/task/action"
 	_run "github.com/factorysh/batch-scheduler/task/run"
@@ -28,6 +29,8 @@ func init() {
 }
 
 var composeIsHere bool = false
+
+const volumePrefix = "./volumes"
 
 // EnsureBin will ensure that docker-compose is found in $PATH
 func EnsureBin() error {
@@ -57,6 +60,52 @@ func lazyEnsureBin() error {
 	}
 	composeIsHere = true
 	return nil
+}
+
+// Volume represent a basic docker compose volume struct
+type Volume struct {
+	hostPath      string
+	containerPath string
+	service       string
+}
+
+func (v Volume) checkVolumeRules() error {
+	maxDeepness := 10
+
+	// should start with "./"
+	if !strings.HasPrefix(v.hostPath, "./") {
+		return fmt.Errorf("Volume %v is not a local volume", v)
+	}
+
+	// split host path on separator
+	hostParts := strings.Split(v.hostPath, string(os.PathSeparator))
+
+	// check max deepness
+	if len(hostParts) > maxDeepness {
+		return fmt.Errorf("Volume description %v reach deepnees max level %d", v, maxDeepness)
+	}
+
+	// inside part (parts[0]) can't contain '..'
+	for _, part := range hostParts {
+		if part == ".." {
+			return fmt.Errorf("Path %v contains `..`", v.hostPath)
+		}
+	}
+
+	return nil
+}
+
+// addPrefix needs to be idempotent, if ./volumes is present, to prepend it another time
+func (v *Volume) addPrefix() {
+
+	if !strings.HasPrefix(v.hostPath, "./volumes") {
+		v.hostPath = fmt.Sprintf("./volumes/%s", strings.TrimLeft(v.hostPath, "./"))
+	}
+}
+
+// toVolumeString returns the content of a volume struct to a compose volume string
+func (v Volume) toVolumeString() string {
+	return fmt.Sprintf("%s:%s", v.hostPath, v.containerPath)
 }
 
 // Compose is a docker-compose project
@@ -119,6 +168,95 @@ func (c *Compose) UnmarshalYAML(value *yaml.Node) error {
 		}
 	}
 
+	err := c.SanitizeVolumes()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// getVolumesForService is used to retreive a list of Volume struct from a service
+func (c *Compose) getVolumesForService(name string) ([]Volume, error) {
+
+	srv, ok := c.Services[name]
+	if !ok {
+		return nil, fmt.Errorf("No service with name %s found", name)
+	}
+
+	service, ok := srv.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Can't cast service %s into a map", name)
+	}
+
+	vols, has := service["volumes"]
+	if !has {
+		return nil, nil
+	}
+
+	volumes, ok := vols.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("Can't cast volumes %v into a map", vols)
+	}
+
+	// create array for all volumes
+	allVolumes := make([]Volume, len(volumes))
+	for i, vol := range volumes {
+		volume, ok := vol.(string)
+		if !ok {
+			return nil, fmt.Errorf("Can't cast volume %v into a volume string", vol)
+		}
+		// check that volume contains two parts
+		parts := strings.Split(volume, ":")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("Volume %v do not contains two parts", volume)
+		}
+		allVolumes[i] = Volume{
+			service:       name,
+			hostPath:      parts[0],
+			containerPath: parts[1],
+		}
+
+	}
+
+	return allVolumes, nil
+}
+
+// SanitizeVolumes is used to ensure that volumes are plug the right way when Up is called
+func (c *Compose) SanitizeVolumes() error {
+	for key, srv := range c.Services {
+		volumes, err := c.getVolumesForService(key)
+		if err != nil {
+			return err
+		}
+
+		if volumes == nil {
+			continue
+		}
+
+		service, ok := srv.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("Can't cast compose structure into a map %v", c.Services)
+		}
+
+		sanitized := make([]interface{}, len(volumes))
+		for i, vol := range volumes {
+			err := vol.checkVolumeRules()
+			if err != nil {
+				return err
+			}
+
+			vol.addPrefix()
+
+			sanitized[i] = vol.toVolumeString()
+		}
+
+		// go for sanitized array
+		service["volumes"] = sanitized
+		// replace sanitized array
+		c.Services[key] = service
+	}
+
 	return nil
 }
 
@@ -143,25 +281,11 @@ func (c Compose) Validate() error {
 	if err != nil {
 		return err
 	}
-	tmpfile := os.Getenv("BATCH_TMP")
-	if tmpfile == "" {
-		tmpfile = "/tmp"
-	}
-	tmpdir, err := ioutil.TempDir(tmpfile, "")
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(tmpdir, 0750)
-	if err != nil {
-		return err
-	}
-	file, err := os.OpenFile(path.Join(tmpdir, "validator"), os.O_CREATE|os.O_WRONLY, 0640)
+	file, err := ioutil.TempFile(path.Join(config.GetDataDir(), "validator"), "validate-")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(file.Name())
-	defer os.Remove(tmpdir)
-
 	err = yaml.NewEncoder(file).Encode(c)
 	if err != nil {
 		return err
@@ -193,6 +317,26 @@ func (c Compose) guessMainContainer() (string, error) {
 	}
 	//TODO build a DAG with depends_on, or watch for an annotation
 	return "", errors.New("Multiple services handling is not yet implemented")
+}
+
+func (c Compose) ensureVolumesInWD(workingDir string) error {
+
+	for key := range c.Services {
+		volumes, err := c.getVolumesForService(key)
+		if err != nil {
+			return err
+		}
+
+		for _, volume := range volumes {
+			fmt.Println(path.Join(workingDir, volume.hostPath))
+			err := os.MkdirAll(path.Join(workingDir, volume.hostPath), 0755)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // Up compose action
@@ -229,6 +373,11 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (_r
 		}
 	}
 	f.Close()
+
+	err = c.ensureVolumesInWD(workingDirectory)
+	if err != nil {
+		return nil, err
+	}
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

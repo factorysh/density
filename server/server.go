@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"time"
 
 	"github.com/factorysh/batch-scheduler/config"
@@ -32,20 +33,16 @@ func New() *Server {
 		log.Fatal("Server can't start without an authentication key (`AUTH_KEY` env variable)")
 	}
 
-	err := config.EnsureDirs()
+	err := config.EnsureDataDirs()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// TODO: dynamic ressource parameters (env, file, whatever)
-	// FIXME where is my home?
-	// TODO: storage kind and path from env
-	// Plug bbolt with violence
-	store, err := store.NewBoltStore("/tmp/batch.store")
+	store, err := store.NewBoltStore(path.Join(config.GetDataDir(), "store", "batch.store"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	s.Scheduler = scheduler.New(scheduler.NewResources(2, 512*16), runner.New("/tmp"), store)
+	s.Scheduler = scheduler.New(scheduler.NewResources(2, 512*16), runner.New(path.Join(config.GetDataDir(), "wd")), store)
 
 	var ok bool
 	if s.Addr, ok = os.LookupEnv("LISTEN"); !ok {

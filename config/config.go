@@ -18,11 +18,11 @@ func GetDataDir() string {
 	return b
 }
 
-// EnsureDirs creates needed directories
-func EnsureDirs() error {
+// EnsureDataDirs creates needed directories for data
+func EnsureDataDirs() error {
 
 	b := GetDataDir()
-	subs := [2]string{"validator", "wd"}
+	subs := [3]string{"validator", "wd", "store"}
 
 	for _, sub := range subs {
 		err := os.MkdirAll(fmt.Sprintf("%s/%s", b, sub), 0755)
