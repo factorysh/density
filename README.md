@@ -20,19 +20,19 @@ Listen localhost
 
 Auth use a JWT token, similar to Hashicorp Vault : https://docs.gitlab.com/ee/ci/examples/authenticating-with-hashicorp-vault/
 
-`schedule` is an UUID
+`:id` is an UUID
 
 `owner` is `[a-zA-Z-0-9_\-]+` and can't look like an UUID.
 
-`GET /api/schedule` all schedules for admin, my own schedule for a user
+`GET /api/task` all schedules for admin, my own schedule for a user
 
-`GET /api/schedule/:owner` schedules of this owner
+`GET /api/task/:owner` schedules of this owner
 
-`DELETE /api/schedule/:schedule`
+`DELETE /api/task/:id`
 
-`PUT /api/schedule/:schedule`
+`PUT /api/task/:id`
 
-`POST /api/schedule` owner is implicit, or explicit if admin creates the schedule.
+`POST /api/task` owner is implicit, or explicit if admin creates the schedule.
 
 #### Compose hacked format
 

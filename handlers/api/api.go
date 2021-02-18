@@ -14,12 +14,12 @@ import (
 
 func MuxAPI(schd *scheduler.Scheduler, authKey string) http.HandlerFunc {
 	router := mux.NewRouter()
-	router.HandleFunc("/api/schedules/{owner}", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
-	router.HandleFunc("/api/schedule/{uuid}", wrapMyHandler(schd, HandleGetSchedule)).Methods(http.MethodGet)
-	router.HandleFunc("/api/schedules", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
-	router.HandleFunc("/api/schedules", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
-	router.HandleFunc("/api/schedules/{owner}", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
-	router.HandleFunc("/api/schedules/{job}", wrapMyHandler(schd, HandleDeleteSchedules)).Methods(http.MethodDelete)
+	router.HandleFunc("/api/tasks/{owner}", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
+	router.HandleFunc("/api/task/{uuid}", wrapMyHandler(schd, HandleGetSchedule)).Methods(http.MethodGet)
+	router.HandleFunc("/api/tasks", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
+	router.HandleFunc("/api/tasks", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
+	router.HandleFunc("/api/tasks/{owner}", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
+	router.HandleFunc("/api/tasks/{job}", wrapMyHandler(schd, HandleDeleteSchedules)).Methods(http.MethodDelete)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
