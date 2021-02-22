@@ -15,7 +15,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/factorysh/batch-scheduler/config"
 	"github.com/factorysh/batch-scheduler/task"
 	"github.com/factorysh/batch-scheduler/task/action"
 	_run "github.com/factorysh/batch-scheduler/task/run"
@@ -281,7 +280,7 @@ func (c Compose) Validate() error {
 	if err != nil {
 		return err
 	}
-	file, err := ioutil.TempFile(path.Join(config.GetDataDir(), "validator"), "validate-")
+	file, err := ioutil.TempFile(path.Join(os.TempDir(), "validator"), "validate-")
 	if err != nil {
 		return err
 	}
