@@ -97,6 +97,22 @@ func (c *Compose) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
+func (c *Compose) WalkServices(fn func(name string, value map[string]interface{}) error) error {
+	for k, v := range c.Services {
+		if !strings.HasPrefix(k, "x-") {
+			vv, ok := v.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("Not a map[string]inetrface{} %v", v)
+			}
+			err := fn(k, vv)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // getVolumesForService is used to retreive a list of Volume struct from a service
 func (c *Compose) getVolumesForService(name string) ([]Volume, error) {
 
