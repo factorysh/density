@@ -30,6 +30,8 @@ func init() {
 // Compose is a docker-compose project
 // FIXME there is more first level keys, like volume or networks
 type Compose struct {
+	Networks map[string]interface{} `json:"networks,omitempty"`
+	Volumes  map[string]interface{} `json:"volumes,omitempty"`
 	Version  string                 `json:"version"` // Compose version
 	Services map[string]interface{} `json:"services"`
 	X        map[string]interface{} `json:"X,omitempty"` // The x-stuff on top level, just for aliasing
