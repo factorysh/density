@@ -280,7 +280,9 @@ func (c Compose) Validate() error {
 	if err != nil {
 		return err
 	}
-	file, err := ioutil.TempFile(path.Join(os.TempDir(), "validator"), "validate-")
+	p := path.Join(os.TempDir(), "validator")
+	os.MkdirAll(p, 0750)
+	file, err := ioutil.TempFile(p, "validate-")
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/factorysh/batch-scheduler/config"
 	_task "github.com/factorysh/batch-scheduler/task"
 	_status "github.com/factorysh/batch-scheduler/task/status"
 	"github.com/stretchr/testify/assert"
@@ -119,12 +118,6 @@ services:
 `
 
 func TestValidate(t *testing.T) {
-	testDir := "/tmp/batch-scheduler-tests"
-	os.MkdirAll(testDir, 0655)
-	defer os.RemoveAll(testDir)
-	os.Setenv("DATA_DIR", testDir)
-	err := config.EnsureDataDirs()
-	assert.NoError(t, err)
 
 	tests := []struct {
 		input []byte
