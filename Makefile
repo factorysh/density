@@ -5,9 +5,9 @@ default: build
 
 build: bin
 	go build \
-		-ldflags "-X github.com:factorysh/batch-scheduler/version.version=$(GIT_VERSION)" \
+		-ldflags "-X github.com/factorysh/batch-scheduler/version.version=$(GIT_VERSION)" \
 		-o bin/batch-scheduler \
-		cmd/batch-scheduler.go
+		main.go
 
 bin:
 	mkdir -p bin
