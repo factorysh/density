@@ -146,6 +146,8 @@ func (s *Scheduler) Start(ctx context.Context) {
 		case <-s.events:
 		case <-s.stop:
 			return
+		case <-ctx.Done():
+			return
 		}
 		l := log.WithField("tasks", s.tasks.Length())
 		todos := s.readyToGo()
