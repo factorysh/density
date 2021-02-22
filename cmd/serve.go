@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,7 +24,14 @@ func init() {
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Serve REST API",
-	Long:  ``,
+	Long: `
+	Sentry is used if SENTRY_DSN env is set.
+	LISTEN
+	AUTH_KEY
+	DATA_DIR
+	CPU
+	RAM
+	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		err := compose.EnsureBin()
@@ -52,7 +60,27 @@ var serveCmd = &cobra.Command{
 			})
 		}
 
-		s := server.New()
+		authKey := os.Getenv("AUTH_KEY")
+		if authKey == "" {
+			log.Fatal("Server can't start without an authentication key (`AUTH_KEY` env variable)")
+		}
+
+		dataDir := os.Getenv("DATA_DIR")
+		if dataDir == "" {
+			dataDir = "/tmp/batch-scheduler"
+		}
+
+		addr := os.Getenv("LISTEN")
+		if addr == "" {
+			addr = "localhost:8042"
+		}
+		cpu := 2
+		ram := 8 * 1024
+
+		s, err := server.New(addr, dataDir, authKey, cpu, ram)
+		if err != nil {
+			return err
+		}
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

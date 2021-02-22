@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 
-	"github.com/factorysh/batch-scheduler/config"
 	handlers "github.com/factorysh/batch-scheduler/handlers/api"
 	"github.com/factorysh/batch-scheduler/runner"
 	"github.com/factorysh/batch-scheduler/scheduler"
@@ -23,33 +23,29 @@ type Server struct {
 	Addr      string
 }
 
-// Initialize server instance
-func New() *Server {
+// New initializes server instance
+func New(addr, dataDir, authKey string, cpu, ram int) (*Server, error) {
 
-	s := &Server{}
-	var found bool
+	dataDir = strings.TrimRight(dataDir, "/")
 
-	if s.AuthKey, found = os.LookupEnv("AUTH_KEY"); !found {
-		log.Fatal("Server can't start without an authentication key (`AUTH_KEY` env variable)")
+	for _, sub := range [3]string{"validator", "wd", "store"} {
+		err := os.MkdirAll(path.Join(dataDir, sub), 0755)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	err := config.EnsureDataDirs()
+	store, err := store.NewBoltStore(path.Join(dataDir, "store", "batch.store"))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	store, err := store.NewBoltStore(path.Join(config.GetDataDir(), "store", "batch.store"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	s.Scheduler = scheduler.New(scheduler.NewResources(2, 512*16), runner.New(path.Join(config.GetDataDir(), "wd")), store)
-
-	var ok bool
-	if s.Addr, ok = os.LookupEnv("LISTEN"); !ok {
-		s.Addr = "localhost:8042"
-	}
-
-	return s
+	return &Server{
+		AuthKey: authKey,
+		Addr:    addr,
+		Scheduler: scheduler.New(scheduler.NewResources(cpu, ram),
+			runner.New(path.Join(dataDir, "wd")), store),
+	}, nil
 }
 
 // Run starts this server instance
