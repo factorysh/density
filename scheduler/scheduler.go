@@ -155,7 +155,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 		if len(todos) == 0 { // nothing is ready  just wait
 			now := time.Now()
 			n := s.next()
-			var sleep time.Duration = 0
+			var sleep time.Duration
 			if n == nil {
 				sleep = 1 * time.Second
 			} else {
