@@ -163,10 +163,9 @@ func (s *Scheduler) Start(ctx context.Context) {
 				l = l.WithField("task", n.Id)
 			}
 			l.WithField("sleep", sleep).Info("Waiting")
-			go func() {
-				time.Sleep(sleep)
+			time.AfterFunc(sleep, func() {
 				s.events <- new(interface{})
-			}()
+			})
 		} else { // Something todo
 			s.execTask(todos[0])
 		}
