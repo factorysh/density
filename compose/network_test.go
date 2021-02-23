@@ -5,6 +5,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -75,4 +76,14 @@ func TestNetworkCreateHole(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, holes, 4)
 	assert.Equal(t, Subnet{18, 2}, holes[3])
+}
+
+func TestNetworkFromDocker(t *testing.T) {
+	docker, err := client.NewEnvClient()
+	assert.NoError(t, err)
+	subnets, err := SubnetFromDocker(docker)
+	assert.NoError(t, err)
+	subnets, err = subnets.Add()
+	assert.NoError(t, err)
+	assert.True(t, len(subnets) > 0)
 }
