@@ -1,11 +1,17 @@
 package compose
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"regexp"
+	"sort"
 	"strconv"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 )
 
 var subnetPattern *regexp.Regexp
@@ -102,4 +108,32 @@ func (b BySubnet) Add() (BySubnet, error) {
 		b = append(b, n)
 	}
 	return b, err
+}
+
+func SubnetFromDocker(docker *client.Client) (BySubnet, error) {
+	args := filters.NewArgs()
+	args.Add("driver", "bridge")
+	networks, err := docker.NetworkList(context.TODO(), types.NetworkListOptions{
+		Filters: args,
+	})
+	if err != nil {
+		return nil, err
+	}
+	subnets := make(BySubnet, 0)
+	for _, network := range networks {
+		if network.Name == "bridge" { // It's the default bridge network
+			continue
+		}
+		for _, config := range network.IPAM.Config {
+			subnet, err := ParseSubnet(config.Subnet)
+			if err != nil {
+				// Do I need to handle strange subnet? hum, no
+				return nil, err
+			}
+			subnets = append(subnets, subnet)
+		}
+	}
+	sort.Sort(subnets)
+
+	return subnets, nil
 }
