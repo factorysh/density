@@ -40,6 +40,10 @@ func (s Subnet) String() string {
 	return fmt.Sprintf("172.%d.%d.0/24", s[0], s[1])
 }
 
+func (s Subnet) Value() uint16 {
+	return uint16(s[0])*256 + uint16(s[1])
+}
+
 func ParseSubnet(txt string) (Subnet, error) {
 	if subnetPattern == nil {
 		subnetPattern = regexp.MustCompile("172\\.(\\d+)\\.(\\d+)\\.\\d+/24")
@@ -73,4 +77,29 @@ func (b BySubnet) Less(i, j int) bool {
 		return b[i][0] < b[j][0]
 	}
 	return b[i][1] < b[j][1]
+}
+
+func (b BySubnet) next() (Subnet, error) {
+	// BySubnet is sorted
+	first := Subnet{18, 0}
+	if len(b) == 0 {
+		return first, nil
+	}
+	n := uint16(18 * 256)
+	for i, s := range b {
+		if s.Value() != n {
+			return b[i-1].Next()
+		}
+		n++
+	}
+	return b[len(b)-1].Next()
+}
+
+// Add a a new Subnet, filling a hole, or a fres one
+func (b BySubnet) Add() (BySubnet, error) {
+	n, err := b.next()
+	if err == nil {
+		b = append(b, n)
+	}
+	return b, err
 }

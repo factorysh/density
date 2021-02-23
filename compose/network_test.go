@@ -1,6 +1,7 @@
 package compose
 
 import (
+	"fmt"
 	"sort"
 	"testing"
 
@@ -47,4 +48,31 @@ func TestNetworkSort(t *testing.T) {
 		{19, 12},
 		{22, 42},
 	}, ips)
+}
+
+func TestNetworkCreate(t *testing.T) {
+	ips := BySubnet{}
+	assert.Len(t, ips, 0)
+	ips, err := ips.Add()
+	assert.NoError(t, err)
+	assert.Len(t, ips, 1)
+	assert.Equal(t, Subnet{18, 0}, ips[0])
+	ips, err = ips.Add()
+	assert.NoError(t, err)
+	assert.Len(t, ips, 2)
+	fmt.Println(ips)
+	assert.Equal(t, Subnet{18, 1}, ips[1])
+}
+
+func TestNetworkCreateHole(t *testing.T) {
+	holes := BySubnet{
+		{18, 0},
+		{18, 1},
+		{18, 3},
+	}
+	assert.Len(t, holes, 3)
+	holes, err := holes.Add()
+	assert.NoError(t, err)
+	assert.Len(t, holes, 4)
+	assert.Equal(t, Subnet{18, 2}, holes[3])
 }
