@@ -20,6 +20,20 @@ func TestNetwork(t *testing.T) {
 	assert.Equal(t, "172.19.45.0/24", n.String())
 }
 
+func TestNetworkParse(t *testing.T) {
+	s, err := ParseSubnet("172.19.12.0/24")
+	assert.NoError(t, err)
+	assert.Equal(t, Subnet{19, 12}, s)
+	for _, p := range []string{
+		"172.19.300.0/24",
+		"170.19.30.0/24",
+		"172.19.30.0/20",
+	} {
+		_, err = ParseSubnet(p)
+		assert.Error(t, err)
+	}
+}
+
 func TestNetworkSort(t *testing.T) {
 	ips := []Subnet{
 		{18, 0},
