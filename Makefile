@@ -16,6 +16,7 @@ run:
 	./bin/batch-scheduler
 
 test:
+	docker system prune -f
 	go test -cover -timeout 30s \
 	github.com/factorysh/batch-scheduler/store \
 	github.com/factorysh/batch-scheduler/compose \
