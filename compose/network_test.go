@@ -87,3 +87,15 @@ func TestNetworkFromDocker(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, len(subnets) > 0)
 }
+
+func TestNetworkNew(t *testing.T) {
+	docker, err := client.NewEnvClient()
+	assert.NoError(t, err)
+	networks, err := NewNetworks(docker)
+	assert.NoError(t, err)
+	n, err := networks.New("bob")
+	assert.NoError(t, err)
+	fmt.Println(n)
+	err = networks.Remove(n)
+	assert.NoError(t, err)
+}

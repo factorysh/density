@@ -8,9 +8,11 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 )
 
@@ -110,6 +112,15 @@ func (b BySubnet) Add() (BySubnet, error) {
 	return b, err
 }
 
+func (b BySubnet) Find(subnet Subnet) int {
+	for i, s := range b {
+		if s == subnet {
+			return i
+		}
+	}
+	return -1
+}
+
 func SubnetFromDocker(docker *client.Client) (BySubnet, error) {
 	args := filters.NewArgs()
 	args.Add("driver", "bridge")
@@ -136,4 +147,90 @@ func SubnetFromDocker(docker *client.Client) (BySubnet, error) {
 	sort.Sort(subnets)
 
 	return subnets, nil
+}
+
+type Networks struct {
+	docker  *client.Client
+	subnets BySubnet
+	lock    *sync.Mutex
+}
+
+func NewNetworks(docker *client.Client) (*Networks, error) {
+	n := &Networks{
+		docker: docker,
+		lock:   &sync.Mutex{},
+	}
+	var err error
+	n.subnets, err = SubnetFromDocker(docker)
+	if err != nil {
+		return nil, err
+	}
+	return n, nil
+}
+
+func (n *Networks) New(project string) (string, error) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	var err error
+	n.subnets, err = n.subnets.Add()
+	if err != nil {
+		return "", err
+	}
+	last := n.subnets[len(n.subnets)-1]
+	sort.Sort(n.subnets)
+	networkName := fmt.Sprintf("batch-%s-%d-%d", project, last[0], last[1])
+
+	_, err = n.docker.NetworkCreate(context.TODO(), networkName, types.NetworkCreate{
+		CheckDuplicate: true,
+		EnableIPv6:     false,
+		Scope:          "local",
+		Driver:         "bridge",
+		Labels: map[string]string{
+			"batch": project,
+		},
+		Attachable: true,
+		IPAM: &network.IPAM{
+			Driver: "default",
+			Config: []network.IPAMConfig{
+				{
+					Subnet: last.String(),
+				},
+			},
+		},
+	})
+	return networkName, err
+}
+
+func (n *Networks) Remove(network string) error {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	args := filters.NewArgs()
+	args.Add("name", network)
+	networks, err := n.docker.NetworkList(context.TODO(), types.NetworkListOptions{
+		Filters: args,
+	})
+	if err != nil {
+		return err
+	}
+	if len(networks) != 1 {
+		return fmt.Errorf("One network should be found, not %d", len(networks))
+	}
+	subnet, err := ParseSubnet(networks[0].IPAM.Config[0].Subnet)
+	if err != nil {
+		return err
+	}
+	i := n.subnets.Find(subnet)
+	if i == -1 {
+		return fmt.Errorf("Not in cache : %s", network)
+	}
+	if i == len(n.subnets)-1 {
+		n.subnets = n.subnets[:i]
+	} else {
+		n.subnets = append(n.subnets[:i], n.subnets[i+1:]...)
+	}
+	err = n.docker.NetworkRemove(context.TODO(), network)
+	if err != nil {
+		return err
+	}
+	return nil
 }
