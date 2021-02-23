@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/docker/docker/api/types"
@@ -136,10 +137,13 @@ func SubnetFromDocker(docker *client.Client) (BySubnet, error) {
 			continue
 		}
 		for _, config := range network.IPAM.Config {
+			if !strings.HasPrefix(config.Subnet, "172.") {
+				continue
+			}
 			subnet, err := ParseSubnet(config.Subnet)
 			if err != nil {
 				// Do I need to handle strange subnet? hum, no
-				return nil, err
+				continue
 			}
 			subnets = append(subnets, subnet)
 		}
