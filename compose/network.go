@@ -2,7 +2,6 @@ package compose
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"regexp"
@@ -37,7 +36,7 @@ func (s Subnet) Next() (Subnet, error) {
 		r[0] = s[0]
 	} else {
 		if s[0] > 31 {
-			return r, errors.New("Too large")
+			return r, fmt.Errorf("Subnet max is 172.31.255.255, %d > 31", s[0])
 		}
 		r[1] = 0
 		r[0] = s[0] + 1
