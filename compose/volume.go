@@ -41,7 +41,7 @@ func (v Volume) checkVolumeRules() error {
 	return nil
 }
 
-// addPrefix needs to be idempotent, if ./volumes is present, to prepend it another time
+// addPrefix needs to be idempotent, if ./volumes is present, do not prepend it another time
 func (v *Volume) addPrefix() {
 
 	if !strings.HasPrefix(v.hostPath, "./volumes") {
