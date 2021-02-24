@@ -2,6 +2,7 @@ package compose
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"testing"
 
@@ -52,6 +53,9 @@ func TestNetworkSort(t *testing.T) {
 }
 
 func TestNetworkCreate(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip()
+	}
 	ips := BySubnet{}
 	assert.Len(t, ips, 0)
 	ips, err := ips.Add()
