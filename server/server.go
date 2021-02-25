@@ -72,13 +72,12 @@ func (s *Server) Run(ctx context.Context) {
 		| |_| |  __/ | | \__ \ | |_| |_| |
 		|____/ \___|_| |_|___/_|\__|\__, |
 		                             |___/
-		
 		`))
 	}).Methods(http.MethodGet)
 	router.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(version.Version()))
 	}).Methods(http.MethodGet)
-	handlers.MuxAPI(router.PathPrefix("/api").Subrouter(), s.Scheduler, s.AuthKey)
+	handlers.RegisterAPI(router.PathPrefix("/api").Subrouter(), s.Scheduler, s.AuthKey)
 	server := &http.Server{
 		Addr:    s.Addr,
 		Handler: sentryHandler.HandleFunc(router.ServeHTTP),
