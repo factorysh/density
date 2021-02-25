@@ -2,13 +2,52 @@ package compose
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/docker/docker/client"
 )
 
+func StandardRecomposator(docker *client.Client) (*Recomposator, error) {
+	r, err := NewRecomposator(docker)
+	if err != nil {
+		return nil, err
+	}
+	r.UseVolumePatcher(PatchVolumeInVolumes)
+	return r, nil
+}
+
+type VolumePatcher func(src string) (string, error)
+type ServicePatcher func(service map[string]interface{}) error
+
 type Recomposator struct {
-	docker   *client.Client
-	networks *Networks
+	docker          *client.Client
+	networks        *Networks
+	volumePatchers  []VolumePatcher
+	servicePatchers []ServicePatcher
+}
+
+func (r *Recomposator) UseVolumePatcher(p VolumePatcher) {
+	r.volumePatchers = append(r.volumePatchers, p)
+}
+
+func (r *Recomposator) UseServicePatcher(p ServicePatcher) {
+	r.servicePatchers = append(r.servicePatchers, p)
+}
+
+func PatchVolumeInVolumes(volume string) (string, error) {
+	slugs := strings.Split(volume, ":")
+	src := slugs[0]
+	if !strings.HasPrefix(src, "./") {
+		return "", fmt.Errorf("Wrong volume prefix: %s", src)
+	}
+	ro := ""
+	if len(slugs) == 3 {
+		ro = fmt.Sprintf(":%s", slugs[2])
+	}
+	if !strings.HasPrefix(src, "./volumes/") {
+		return fmt.Sprintf("./volumes/%s:%s%s", src[2:], slugs[1], ro), nil
+	}
+	return src, nil
 }
 
 func NewRecomposator(docker *client.Client) (*Recomposator, error) {
@@ -17,8 +56,10 @@ func NewRecomposator(docker *client.Client) (*Recomposator, error) {
 		return nil, err
 	}
 	return &Recomposator{
-		docker:   docker,
-		networks: n,
+		docker:          docker,
+		networks:        n,
+		volumePatchers:  make([]VolumePatcher, 0),
+		servicePatchers: make([]ServicePatcher, 0),
 	}, nil
 }
 
@@ -41,6 +82,25 @@ func (r *Recomposator) Recompose(name string, c *Compose) (*Compose, error) {
 		},
 	}
 	prod.WalkServices(func(name string, service map[string]interface{}) error {
+		volumesRaw, ok := service["volumes"]
+		if ok {
+			volumes, err := castVolumes(volumesRaw)
+			if err != nil {
+				return err
+			}
+			vv := make([]string, len(volumes))
+			for i, volume := range volumes {
+				v := volume
+				for _, patcher := range r.volumePatchers {
+					v, err = patcher(v)
+					if err != nil {
+						return err
+					}
+				}
+				vv[i] = v
+			}
+			service["volumes"] = vv
+		}
 		labelsRaw, ok := service["labels"]
 		if !ok {
 			service["labels"] = map[string]string{

@@ -89,11 +89,6 @@ func (c *Compose) UnmarshalYAML(value *yaml.Node) error {
 		}
 	}
 
-	err := c.SanitizeVolumes()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -110,90 +105,6 @@ func (c *Compose) WalkServices(fn func(name string, value map[string]interface{}
 			}
 		}
 	}
-	return nil
-}
-
-// getVolumesForService is used to retreive a list of Volume struct from a service
-func (c *Compose) getVolumesForService(name string) ([]Volume, error) {
-
-	srv, ok := c.Services[name]
-	if !ok {
-		return nil, fmt.Errorf("No service with name %s found", name)
-	}
-
-	service, ok := srv.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("Can't cast service %s into a map", name)
-	}
-
-	vols, has := service["volumes"]
-	if !has {
-		return nil, nil
-	}
-
-	volumes, ok := vols.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("Can't cast volumes %v into a map", vols)
-	}
-
-	// create array for all volumes
-	allVolumes := make([]Volume, len(volumes))
-	for i, vol := range volumes {
-		volume, ok := vol.(string)
-		if !ok {
-			return nil, fmt.Errorf("Can't cast volume %v into a volume string", vol)
-		}
-		// check that volume contains two parts
-		parts := strings.Split(volume, ":")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("Volume %v do not contains two parts", volume)
-		}
-		allVolumes[i] = Volume{
-			service:       name,
-			hostPath:      parts[0],
-			containerPath: parts[1],
-		}
-
-	}
-
-	return allVolumes, nil
-}
-
-// SanitizeVolumes is used to ensure that volumes are plug the right way when Up is called
-func (c *Compose) SanitizeVolumes() error {
-	for key, srv := range c.Services {
-		volumes, err := c.getVolumesForService(key)
-		if err != nil {
-			return err
-		}
-
-		if volumes == nil {
-			continue
-		}
-
-		service, ok := srv.(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("Can't cast compose structure into a map %v", c.Services)
-		}
-
-		sanitized := make([]interface{}, len(volumes))
-		for i, vol := range volumes {
-			err := vol.checkVolumeRules()
-			if err != nil {
-				return err
-			}
-
-			vol.addPrefix()
-
-			sanitized[i] = vol.toVolumeString()
-		}
-
-		// go for sanitized array
-		service["volumes"] = sanitized
-		// replace sanitized array
-		c.Services[key] = service
-	}
-
 	return nil
 }
 
@@ -258,26 +169,6 @@ func (c Compose) guessMainContainer() (string, error) {
 	return "", errors.New("Multiple services handling is not yet implemented")
 }
 
-func (c Compose) ensureVolumesInWD(workingDir string) error {
-
-	for key := range c.Services {
-		volumes, err := c.getVolumesForService(key)
-		if err != nil {
-			return err
-		}
-
-		for _, volume := range volumes {
-			fmt.Println(path.Join(workingDir, volume.hostPath))
-			err := os.MkdirAll(path.Join(workingDir, volume.hostPath), 0755)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 // Up compose action
 func (c Compose) Up(workingDirectory string, environments map[string]string) (_run.Run, error) {
 	err := lazyEnsureBin()
@@ -312,11 +203,6 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (_r
 		}
 	}
 	f.Close()
-
-	err = c.ensureVolumesInWD(workingDirectory)
-	if err != nil {
-		return nil, err
-	}
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/PaesslerAG/jsonpath"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
@@ -24,15 +25,20 @@ services:
   hello:
     image: "busybox:latest"
     command: "echo world"
+    volumes:
+      - ./tmp:/plop:ro
 x-batch:
   key: value
 `), c)
 	assert.NoError(t, err)
-	composator, err := NewRecomposator(docker)
+	composator, err := StandardRecomposator(docker)
 	assert.NoError(t, err)
 	prod, err := composator.Recompose("bob", c)
 	assert.NoError(t, err)
 	out, err := yaml.Marshal(prod)
 	assert.NoError(t, err)
 	fmt.Println(string(out))
+	volumes, err := jsonpath.Get("$.hello.volumes", prod.Services)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"./volumes/tmp:/plop:ro"}, volumes)
 }
