@@ -70,12 +70,15 @@ def test_json(session):
 
 def test_prune_on_cancel(session):
     testcases = [
-        {"name": "without wait for",
-         "status": 202, "wait_for": False, "flood": 0},
-        {"name": "with wait for",
-         "status": 204, "wait_for": True, "flood": 0},
-        {"name": "without wait for + flood",
-         "status": 202, "wait_for": False, "flood": 3, "flood_status": 202}
+        {"name": "without wait for", "status": 202, "wait_for": False, "flood": 0},
+        {"name": "with wait for", "status": 204, "wait_for": True, "flood": 0},
+        {
+            "name": "without wait for + flood",
+            "status": 202,
+            "wait_for": False,
+            "flood": 3,
+            "flood_status": 202,
+        },
     ]
 
     for case in testcases:
@@ -84,8 +87,7 @@ def test_prune_on_cancel(session):
         r = session.post(
             "http://localhost:8042/api/tasks",
             files={
-                "docker-compose":
-                """
+                "docker-compose": """
 version: '3'
 services:
     hello:
@@ -127,7 +129,9 @@ x-batch:
         if case["flood"] > 0:
             for times in range(0, case["flood"]):
                 r = session.delete(base_url)
-                assert r.status_code == case["flood_status"], "flood status error in test %s" % case["name"]
+                assert r.status_code == case["flood_status"], (
+                    "flood status error in test %s" % case["name"]
+                )
 
         time.sleep(2)
 
@@ -141,8 +145,7 @@ def test_status(session):
     r = session.post(
         "http://localhost:8042/api/tasks",
         files={
-            "docker-compose":
-            """
+            "docker-compose": """
 version: '3'
 services:
     hello:
