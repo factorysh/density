@@ -65,6 +65,7 @@ func (s *Server) Run(ctx context.Context) {
 	sentryHandler := sentryhttp.New(sentryhttp.Options{})
 	router := mux.NewRouter()
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-type", "text/plain")
 		w.Write([]byte(`
 		____                  _ _
 		|  _ \  ___ _ __  ___(_) |_ _   _
@@ -75,6 +76,7 @@ func (s *Server) Run(ctx context.Context) {
 		`))
 	}).Methods(http.MethodGet)
 	router.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-type", "text/plain")
 		w.Write([]byte(version.Version()))
 	}).Methods(http.MethodGet)
 	handlers.RegisterAPI(router.PathPrefix("/api").Subrouter(), s.Scheduler, s.AuthKey)
