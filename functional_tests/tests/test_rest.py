@@ -23,7 +23,7 @@ def session():
 
 def test_home(session):
     r = session.get("http://localhost:8042")
-    assert r.status_code == 404
+    assert r.status_code == 200
 
 
 def test_tasks(session):
