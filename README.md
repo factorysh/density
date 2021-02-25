@@ -1,10 +1,8 @@
-Density
-====
+# Density
 
 Schedule tasks.
 
-REST
-----
+## REST
 
 ### Admin
 
