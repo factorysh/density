@@ -8,14 +8,18 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAuth(t *testing.T) {
 	key := "plop"
-	ts := httptest.NewServer(Auth(key, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router := mux.NewRouter()
+	router.Use(Auth(key))
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Hello, client")
-	})))
+	})
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL)

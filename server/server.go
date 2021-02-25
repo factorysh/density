@@ -13,7 +13,9 @@ import (
 	"github.com/factorysh/density/runner"
 	"github.com/factorysh/density/scheduler"
 	"github.com/factorysh/density/store"
+	"github.com/factorysh/density/version"
 	sentryhttp "github.com/getsentry/sentry-go/http"
+	"github.com/gorilla/mux"
 )
 
 // Server struct containing config
@@ -61,10 +63,25 @@ func (s *Server) Run(ctx context.Context) {
 	go s.Scheduler.Start(ctxScheduler)
 
 	sentryHandler := sentryhttp.New(sentryhttp.Options{})
-
+	router := mux.NewRouter()
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`
+		____                  _ _
+		|  _ \  ___ _ __  ___(_) |_ _   _
+		| | | |/ _ \ '_ \/ __| | __| | | |
+		| |_| |  __/ | | \__ \ | |_| |_| |
+		|____/ \___|_| |_|___/_|\__|\__, |
+		                             |___/
+		
+		`))
+	}).Methods(http.MethodGet)
+	router.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(version.Version()))
+	}).Methods(http.MethodGet)
+	handlers.MuxAPI(router.PathPrefix("/api").Subrouter(), s.Scheduler, s.AuthKey)
 	server := &http.Server{
 		Addr:    s.Addr,
-		Handler: sentryHandler.HandleFunc(handlers.MuxAPI(s.Scheduler, s.AuthKey)),
+		Handler: sentryHandler.HandleFunc(router.ServeHTTP),
 	}
 
 	go func() {

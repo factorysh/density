@@ -18,6 +18,7 @@ import (
 	"github.com/factorysh/density/scheduler"
 	"github.com/factorysh/density/store"
 	"github.com/factorysh/density/task"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,15 +31,16 @@ func TestAPI(t *testing.T) {
 	defer cancel()
 	go s.Start(ctx)
 	key := "plop"
-	mux := MuxAPI(s, key)
-	ts := httptest.NewServer(mux)
+	router := mux.NewRouter()
+	RegisterAPI(router.PathPrefix("/api").Subrouter(), s, key)
+	ts := httptest.NewServer(router)
 	defer ts.Close()
 
 	c, err := newClient(ts.URL, key)
 	assert.NoError(t, err)
 
 	var r []interface{}
-	res, err := c.Do("GET", "/api/schedules", nil, nil, &r)
+	res, err := c.Do("GET", "/api/tasks", nil, nil, &r)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, res.StatusCode)
 	assert.Len(t, r, 0)
@@ -62,7 +64,7 @@ func TestAPI(t *testing.T) {
 		}
 	}`))
 	var ta task.Task
-	res, err = c.Do("POST", "/api/schedules", h, b, &ta)
+	res, err = c.Do("POST", "/api/tasks", h, b, &ta)
 	assert.NoError(t, err)
 	assert.Equal(t, 201, res.StatusCode)
 	assert.Len(t, r, 0)

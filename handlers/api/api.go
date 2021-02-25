@@ -12,19 +12,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func MuxAPI(schd *scheduler.Scheduler, authKey string) http.HandlerFunc {
-	router := mux.NewRouter()
-	router.HandleFunc("/api/tasks/{owner}", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
-	router.HandleFunc("/api/task/{uuid}", wrapMyHandler(schd, HandleGetSchedule)).Methods(http.MethodGet)
-	router.HandleFunc("/api/tasks", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
-	router.HandleFunc("/api/tasks", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
-	router.HandleFunc("/api/tasks/{owner}", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
-	router.HandleFunc("/api/tasks/{job}", wrapMyHandler(schd, HandleDeleteSchedules)).Methods(http.MethodDelete)
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("content-type", "application/json")
-		middlewares.Auth(authKey, router.ServeHTTP).ServeHTTP(w, r)
-	}
+func RegisterAPI(router *mux.Router, schd *scheduler.Scheduler, authKey string) {
+	router.Use(middlewares.Auth(authKey))
+	router.HandleFunc("/tasks/{owner}", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
+	router.HandleFunc("/task/{uuid}", wrapMyHandler(schd, HandleGetSchedule)).Methods(http.MethodGet)
+	router.HandleFunc("/tasks", wrapMyHandler(schd, HandleGetSchedules)).Methods(http.MethodGet)
+	router.HandleFunc("/tasks", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
+	router.HandleFunc("/tasks/{owner}", wrapMyHandler(schd, HandlePostSchedules)).Methods(http.MethodPost)
+	router.HandleFunc("/tasks/{job}", wrapMyHandler(schd, HandleDeleteSchedules)).Methods(http.MethodDelete)
 }
 
 func wrapMyHandler(schd *scheduler.Scheduler, handler func(*scheduler.Scheduler, *owner.Owner, http.ResponseWriter,
