@@ -13,7 +13,9 @@ def session():
     s.headers.update(
         {
             "Authorization": "Bearer %s"
-            % jwt.encode(dict(owner="alice"), os.getenv("AUTH_KEY"), algorithm="HS256"),
+            % jwt.encode(dict(owner="alice"),
+                         os.getenv("AUTH_KEY"),
+                         algorithm="HS256"),
         }
     )
     return s
@@ -53,7 +55,8 @@ def test_json(session):
             "compose": {
                 "version": "3",
                 "services": {
-                    "hello": {"image": "busybox:latest", "command": "echo World"}
+                    "hello": {"image": "busybox:latest",
+                              "command": "echo World"}
                 },
             }
         },
@@ -70,15 +73,19 @@ def test_json(session):
 
 def test_prune_on_cancel(session):
     testcases = [
-        {"name": "without wait for", "status": 202, "wait_for": False, "flood": 0},
-        {"name": "with wait for", "status": 204, "wait_for": True, "flood": 0},
-        {
-            "name": "without wait for + flood",
-            "status": 202,
-            "wait_for": False,
-            "flood": 3,
-            "flood_status": 202,
-        },
+        {"name": "without wait for",
+         "status": 202,
+         "wait_for": False,
+         "flood": 0},
+        {"name": "with wait for",
+         "status": 204,
+         "wait_for": True,
+         "flood": 0},
+        {"name": "without wait for + flood",
+         "status": 202,
+         "wait_for": False,
+         "flood": 3,
+         "flood_status": 202},
     ]
 
     for case in testcases:
@@ -124,7 +131,8 @@ x-batch:
             r = session.delete(url_with_wait)
         else:
             r = session.delete(base_url)
-        assert r.status_code == case["status"], "status error in test %s" % case["name"]
+        assert r.status_code == case["status"], \
+            "status error in test %s" % case["name"]
 
         if case["flood"] > 0:
             for times in range(0, case["flood"]):
