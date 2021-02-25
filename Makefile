@@ -12,8 +12,10 @@ build: bin
 bin:
 	mkdir -p bin
 
+AUTH_KEY:=debug
+
 run:
-	./bin/density
+	AUTH_KEY=${AUTH_KEY} ./bin/density serve
 
 test:
 	docker system prune -f

@@ -1,3 +1,4 @@
+import os
 import requests
 import json
 import time
@@ -12,7 +13,7 @@ def session():
     s.headers.update(
         {
             "Authorization": "Bearer %s"
-            % jwt.encode(dict(owner="alice"), "s3cr3t", algorithm="HS256"),
+            % jwt.encode(dict(owner="alice"), os.getenv("AUTH_KEY"), algorithm="HS256"),
         }
     )
     return s
