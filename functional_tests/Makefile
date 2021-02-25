@@ -2,7 +2,7 @@ test: venv
 	./venv/bin/pytest -s .
 
 start:
-	AUTH_KEY=s3cr3t ../bin/batch-scheduler
+	AUTH_KEY=s3cr3t ../bin/density
 
 venv:
 	python3 -m venv venv

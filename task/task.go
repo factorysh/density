@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/factorysh/batch-scheduler/task/action"
-	_run "github.com/factorysh/batch-scheduler/task/run"
-	"github.com/factorysh/batch-scheduler/task/status"
+	"github.com/factorysh/density/task/action"
+	_run "github.com/factorysh/density/task/run"
+	"github.com/factorysh/density/task/status"
 	"github.com/google/uuid"
 )
 

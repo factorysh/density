@@ -9,9 +9,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/factorysh/batch-scheduler/task"
-	_run "github.com/factorysh/batch-scheduler/task/run"
-	_status "github.com/factorysh/batch-scheduler/task/status"
+	"github.com/factorysh/density/task"
+	_run "github.com/factorysh/density/task/run"
+	_status "github.com/factorysh/density/task/status"
 )
 
 func init() {

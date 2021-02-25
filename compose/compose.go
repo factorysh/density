@@ -15,9 +15,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/factorysh/batch-scheduler/task"
-	"github.com/factorysh/batch-scheduler/task/action"
-	_run "github.com/factorysh/batch-scheduler/task/run"
+	"github.com/factorysh/density/task"
+	"github.com/factorysh/density/task/action"
+	_run "github.com/factorysh/density/task/run"
 	"gopkg.in/yaml.v3"
 )
 

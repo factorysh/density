@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/factorysh/batch-scheduler/compose" // register compose.Compose as task.Action
-	_task "github.com/factorysh/batch-scheduler/task"
-	_status "github.com/factorysh/batch-scheduler/task/status"
+	_ "github.com/factorysh/density/compose" // register compose.Compose as task.Action
+	_task "github.com/factorysh/density/task"
+	_status "github.com/factorysh/density/task/status"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	_task "github.com/factorysh/batch-scheduler/task"
-	_status "github.com/factorysh/batch-scheduler/task/status"
+	_task "github.com/factorysh/density/task"
+	_status "github.com/factorysh/density/task/status"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )

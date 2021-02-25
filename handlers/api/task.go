@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/factorysh/batch-scheduler/owner"
-	"github.com/factorysh/batch-scheduler/scheduler"
-	"github.com/factorysh/batch-scheduler/task"
+	"github.com/factorysh/density/owner"
+	"github.com/factorysh/density/scheduler"
+	"github.com/factorysh/density/task"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )

@@ -1,4 +1,4 @@
-module github.com/factorysh/batch-scheduler
+module github.com/factorysh/density
 
 go 1.14
 

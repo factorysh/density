@@ -3,7 +3,7 @@ package run
 import (
 	"context"
 
-	"github.com/factorysh/batch-scheduler/task/status"
+	"github.com/factorysh/density/task/status"
 )
 
 type Run interface {

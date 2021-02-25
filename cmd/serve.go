@@ -12,9 +12,9 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/spf13/cobra"
 
-	"github.com/factorysh/batch-scheduler/compose"
-	"github.com/factorysh/batch-scheduler/server"
-	"github.com/factorysh/batch-scheduler/version"
+	"github.com/factorysh/density/compose"
+	"github.com/factorysh/density/server"
+	"github.com/factorysh/density/version"
 )
 
 func init() {
@@ -56,7 +56,7 @@ var serveCmd = &cobra.Command{
 			// Set the timeout to the maximum duration the program can afford to wait.
 			defer sentry.Flush(2 * time.Second)
 			sentry.ConfigureScope(func(scope *sentry.Scope) {
-				scope.SetTag("service", "batch-scheduler")
+				scope.SetTag("service", "density")
 			})
 		}
 
@@ -67,7 +67,7 @@ var serveCmd = &cobra.Command{
 
 		dataDir := os.Getenv("DATA_DIR")
 		if dataDir == "" {
-			dataDir = "/tmp/batch-scheduler"
+			dataDir = "/tmp/density"
 		}
 
 		addr := os.Getenv("LISTEN")

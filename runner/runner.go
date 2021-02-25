@@ -4,8 +4,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/factorysh/batch-scheduler/task"
-	"github.com/factorysh/batch-scheduler/task/run"
+	"github.com/factorysh/density/task"
+	"github.com/factorysh/density/task/run"
 )
 
 type Runner struct {

@@ -5,27 +5,27 @@ default: build
 
 build: bin
 	go build \
-		-ldflags "-X github.com/factorysh/batch-scheduler/version.version=$(GIT_VERSION)" \
-		-o bin/batch-scheduler \
+		-ldflags "-X github.com/factorysh/density/version.version=$(GIT_VERSION)" \
+		-o bin/density \
 		main.go
 
 bin:
 	mkdir -p bin
 
 run:
-	./bin/batch-scheduler
+	./bin/density
 
 test:
 	docker system prune -f
 	go test -cover -timeout 30s \
-	github.com/factorysh/batch-scheduler/store \
-	github.com/factorysh/batch-scheduler/compose \
-	github.com/factorysh/batch-scheduler/task \
-	github.com/factorysh/batch-scheduler/task/status \
-	github.com/factorysh/batch-scheduler/runner \
-	github.com/factorysh/batch-scheduler/pubsub \
-	github.com/factorysh/batch-scheduler/scheduler \
-	github.com/factorysh/batch-scheduler/middlewares
+	github.com/factorysh/density/store \
+	github.com/factorysh/density/compose \
+	github.com/factorysh/density/task \
+	github.com/factorysh/density/task/status \
+	github.com/factorysh/density/runner \
+	github.com/factorysh/density/pubsub \
+	github.com/factorysh/density/scheduler \
+	github.com/factorysh/density/middlewares
 
 generate:
 	go generate ./task

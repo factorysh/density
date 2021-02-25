@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	handlers "github.com/factorysh/batch-scheduler/handlers/api"
-	"github.com/factorysh/batch-scheduler/runner"
-	"github.com/factorysh/batch-scheduler/scheduler"
-	"github.com/factorysh/batch-scheduler/store"
+	handlers "github.com/factorysh/density/handlers/api"
+	"github.com/factorysh/density/runner"
+	"github.com/factorysh/density/scheduler"
+	"github.com/factorysh/density/store"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 )
 

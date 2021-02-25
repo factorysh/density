@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	_status "github.com/factorysh/batch-scheduler/task/status"
+	_status "github.com/factorysh/density/task/status"
 	"github.com/stretchr/testify/assert"
 )
 

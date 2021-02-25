@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/factorysh/batch-scheduler/middlewares"
-	"github.com/factorysh/batch-scheduler/owner"
-	"github.com/factorysh/batch-scheduler/scheduler"
+	"github.com/factorysh/density/middlewares"
+	"github.com/factorysh/density/owner"
+	"github.com/factorysh/density/scheduler"
 	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
 )

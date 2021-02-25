@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/factorysh/batch-scheduler/runner"
-	"github.com/factorysh/batch-scheduler/scheduler"
-	"github.com/factorysh/batch-scheduler/store"
-	"github.com/factorysh/batch-scheduler/task"
+	"github.com/factorysh/density/runner"
+	"github.com/factorysh/density/scheduler"
+	"github.com/factorysh/density/store"
+	"github.com/factorysh/density/task"
 	"github.com/stretchr/testify/assert"
 )
 

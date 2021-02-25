@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/factorysh/batch-scheduler/pubsub"
-	_store "github.com/factorysh/batch-scheduler/store"
-	"github.com/factorysh/batch-scheduler/task"
-	_task "github.com/factorysh/batch-scheduler/task"
-	_run "github.com/factorysh/batch-scheduler/task/run"
-	_status "github.com/factorysh/batch-scheduler/task/status"
+	"github.com/factorysh/density/pubsub"
+	_store "github.com/factorysh/density/store"
+	"github.com/factorysh/density/task"
+	_task "github.com/factorysh/density/task"
+	_run "github.com/factorysh/density/task/run"
+	_status "github.com/factorysh/density/task/status"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )

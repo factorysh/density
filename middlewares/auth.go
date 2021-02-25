@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/factorysh/batch-scheduler/owner"
+	"github.com/factorysh/density/owner"
 	"github.com/getsentry/sentry-go"
 )
 

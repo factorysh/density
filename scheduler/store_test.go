@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/factorysh/batch-scheduler/store"
-	"github.com/factorysh/batch-scheduler/task"
+	"github.com/factorysh/density/store"
+	"github.com/factorysh/density/task"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )

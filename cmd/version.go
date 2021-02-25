@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/factorysh/batch-scheduler/version"
+	"github.com/factorysh/density/version"
 	"github.com/spf13/cobra"
 )
 

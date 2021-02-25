@@ -1,6 +1,6 @@
 package main
 
-import "github.com/factorysh/batch-scheduler/cmd"
+import "github.com/factorysh/density/cmd"
 
 func main() {
 	cmd.Execute()

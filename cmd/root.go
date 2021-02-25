@@ -9,8 +9,8 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   os.Args[0],
-	Short: "Batch-scheduler organize your batch docker run",
-	Long: `Batch-scheduler queues tasks and handles cron.
+	Short: "density organize your batch docker run",
+	Long: `density queues tasks and handles cron.
 		`,
 }
 

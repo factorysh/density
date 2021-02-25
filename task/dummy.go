@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/factorysh/batch-scheduler/task/run"
-	_status "github.com/factorysh/batch-scheduler/task/status"
+	"github.com/factorysh/density/task/run"
+	_status "github.com/factorysh/density/task/status"
 )
 
 // DummyAction is the most basic action, used for tests and illustration purpose

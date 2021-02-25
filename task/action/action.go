@@ -3,8 +3,8 @@ package action
 import (
 	"context"
 
-	"github.com/factorysh/batch-scheduler/task/run"
-	"github.com/factorysh/batch-scheduler/task/status"
+	"github.com/factorysh/density/task/run"
+	"github.com/factorysh/density/task/status"
 )
 
 // Action interface describe behavior of a job

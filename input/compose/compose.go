@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	cmps "github.com/factorysh/batch-scheduler/compose"
-	"github.com/factorysh/batch-scheduler/task"
+	cmps "github.com/factorysh/density/compose"
+	"github.com/factorysh/density/task"
 )
 
 func TaskFromCompose(com *cmps.Compose) (*task.Task, error) {
