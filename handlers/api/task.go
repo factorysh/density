@@ -12,8 +12,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// HandleGetSchedule will retreive a task, convert it into a resp and return the data
-func HandleGetSchedule(schd *scheduler.Scheduler, u *owner.Owner, _ http.ResponseWriter, r *http.Request) (interface{}, error) {
+// HandleGetTask will retreive a task, convert it into a resp and return the data
+func HandleGetTask(schd *scheduler.Scheduler, u *owner.Owner, _ http.ResponseWriter, r *http.Request) (interface{}, error) {
 	fmt.Println(u)
 
 	vars := mux.Vars(r)

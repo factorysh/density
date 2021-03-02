@@ -23,8 +23,8 @@ const JOB = "job"
 // MAXFORMMEM is used to setup max form memory limit
 const MAXFORMMEM = 1024
 
-// HandleGetSchedules handles a get on /schedules endpoint
-func HandleGetSchedules(schd *scheduler.Scheduler, u *owner.Owner, w http.ResponseWriter,
+// HandleGetTasks handles a get on /schedules endpoint
+func HandleGetTasks(schd *scheduler.Scheduler, u *owner.Owner, w http.ResponseWriter,
 	r *http.Request) (interface{}, error) {
 	var ts []*task.Task
 	vars := mux.Vars(r)
@@ -53,8 +53,8 @@ func HandleGetSchedules(schd *scheduler.Scheduler, u *owner.Owner, w http.Respon
 	return ts, nil
 }
 
-// HandlePostSchedules handles a post on /schedules endpoint
-func HandlePostSchedules(schd *scheduler.Scheduler, u *owner.Owner,
+// HandlePostTasks handles a post on /schedules endpoint
+func HandlePostTasks(schd *scheduler.Scheduler, u *owner.Owner,
 	w http.ResponseWriter, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
 	o, explicit := vars[owner.OWNER]
@@ -142,8 +142,8 @@ func HandlePostSchedules(schd *scheduler.Scheduler, u *owner.Owner,
 	return t, err
 }
 
-// HandleDeleteSchedules handle a delete on schedules
-func HandleDeleteSchedules(schd *scheduler.Scheduler, u *owner.Owner,
+// HandleDeleteTasks handle a delete on schedules
+func HandleDeleteTasks(schd *scheduler.Scheduler, u *owner.Owner,
 	w http.ResponseWriter, r *http.Request) (interface{}, error) {
 	params := r.URL.Query()
 	vars := mux.Vars(r)
