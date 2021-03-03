@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/factorysh/density/owner"
+	"github.com/factorysh/density/path"
 	"github.com/getsentry/sentry-go"
 )
 
@@ -57,6 +58,14 @@ func Auth(key string) func(next http.Handler) http.Handler {
 				return
 			}
 			ctx := u.ToCtx(r.Context())
+
+			p, err := path.FromJWT(claims)
+			if err != nil {
+				fmt.Println(err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			ctx = p.ToCtx(ctx)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 

@@ -25,10 +25,12 @@ type Scheduler struct {
 	stop      chan bool
 	runner    Runner
 	Pubsub    *pubsub.PubSub
+	dataDir   string
 }
 
 type Runner interface {
 	Up(*task.Task) (_run.Run, error)
+	GetHome() string
 }
 
 func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
@@ -340,4 +342,9 @@ func (s *Scheduler) Flush(age time.Duration) int {
 	})
 
 	return i
+}
+
+// GetDataDir will return data dir for current runner
+func (s *Scheduler) GetDataDir() string {
+	return s.runner.GetHome()
 }
