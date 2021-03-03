@@ -5,14 +5,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
+	"strings"
 
 	rawCompose "github.com/factorysh/density/compose"
 	"github.com/factorysh/density/input/compose"
 	"github.com/factorysh/density/owner"
+	_path "github.com/factorysh/density/path"
 	"github.com/factorysh/density/task"
 	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	zg "github.com/mattn/go-zglob"
 	"gopkg.in/yaml.v3"
 )
 
@@ -77,11 +82,11 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 		}
 
 		file, _, err := r.FormFile("docker-compose")
-		defer file.Close()
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return nil, err
 		}
+		defer file.Close()
 
 		content, err := ioutil.ReadAll(file)
 		if err != nil {
@@ -177,4 +182,78 @@ func (a *API) HandleDeleteTasks(u *owner.Owner,
 	w.WriteHeader(http.StatusAccepted)
 
 	return nil, nil
+}
+
+// HandleGetVolumes handler a Get query to retrive file status from a task volume
+func (a *API) HandleGetVolumes(u *owner.Owner, w http.ResponseWriter, r *http.Request) (interface{}, error) {
+
+	vars := mux.Vars(r)
+	jobID, ok := vars[JOB]
+	if !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil, fmt.Errorf("Missing job ID in request vars")
+
+	}
+
+	// fetch authorized path from token
+	p, err := _path.FromCtx(r.Context())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return nil, err
+	}
+
+	// if no token found return an error
+	if p == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil, fmt.Errorf("Missing path claim in JWT token")
+	}
+
+	subPath, err := extractPathFromURL(r.URL.Path)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil, err
+	}
+
+	// join path parts to get full path
+	fullPath := path.Join(a.GetDataDir(), jobID, "volumes", subPath)
+
+	matching, err := zg.Match(string(p), fullPath)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return nil, err
+	}
+
+	if !matching {
+		w.WriteHeader(http.StatusUnauthorized)
+		return nil, fmt.Errorf("Unauthorization triggered for user %s on path %s", u.Name, fullPath)
+	}
+
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		w.WriteHeader(http.StatusNotFound)
+		return nil, err
+	}
+
+	http.ServeFile(w, r, fullPath)
+
+	return nil, nil
+}
+
+func extractPathFromURL(p string) (string, error) {
+	// /api/tasks/id/volume
+	const urlShrink int = 5
+
+	// consider everything after `volume/` the requested path
+	// get the file and the path
+	sub, file := path.Split(p)
+	subpath := strings.Split(sub, "/")
+
+	// ensure that path can be shrinked
+	if len(subpath) < urlShrink {
+		return "", fmt.Errorf("Path %s is not a valid path from url", p)
+	}
+
+	subpath = subpath[urlShrink:]
+	subpath = append(subpath, file)
+
+	return path.Join(subpath...), nil
 }

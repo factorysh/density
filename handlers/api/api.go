@@ -33,6 +33,7 @@ func RegisterAPI(router *mux.Router, schd *scheduler.Scheduler, validator *task.
 	router.HandleFunc("/tasks", api.wrapMyHandler(api.HandlePostTasks)).Methods(http.MethodPost)
 	router.HandleFunc("/tasks/{owner}", api.wrapMyHandler(api.HandlePostTasks)).Methods(http.MethodPost)
 	router.HandleFunc("/tasks/{job}", api.wrapMyHandler(api.HandleDeleteTasks)).Methods(http.MethodDelete)
+	router.PathPrefix("/tasks/{job}/volume/").Handler(api.wrapMyHandler(api.HandleGetVolumes)).Methods(http.MethodGet)
 }
 
 func (a *API) wrapMyHandler(handler func(*owner.Owner, http.ResponseWriter,
@@ -58,4 +59,9 @@ func (a *API) wrapMyHandler(handler func(*owner.Owner, http.ResponseWriter,
 		}
 		json.NewEncoder(w).Encode(data)
 	}
+}
+
+// GetDataDir return the configured storage directory for this runner
+func (a *API) GetDataDir() string {
+	return a.schd.GetDataDir()
 }

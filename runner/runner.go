@@ -40,3 +40,8 @@ func (c *Runner) Up(task *_task.Task) (run.Run, error) {
 	// FIXME add some late environments
 	return action.Up(pwd, task.Environments)
 }
+
+// GetHome fetch current data dir for runner
+func (c *Runner) GetHome() string {
+	return c.home
+}
