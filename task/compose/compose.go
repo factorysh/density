@@ -6,23 +6,23 @@ import (
 )
 
 func init() {
-	task.TaskValidatorRegistry["compose"] = ComposeTaskValidatorFactory
+	task.ActionValidatorRegistry["compose"] = ComposeActionValidatorFactory
 }
 
-func ComposeTaskValidatorFactory(cfg map[string]interface{}) (task.TaskValidator, error) {
+func ComposeActionValidatorFactory(cfg map[string]interface{}) (task.ActionValidator, error) {
 	cv, err := compose.NewComposeValidtor(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return &ComposeTaskValidator{cv}, nil
+	return &ComposeActionValidator{cv}, nil
 }
 
-type ComposeTaskValidator struct {
+type ComposeActionValidator struct {
 	*compose.ComposeValidator
 }
 
-func (cv *ComposeTaskValidator) ValidateTask(t *task.Task) []error {
-	c, ok := t.Action.(*compose.Compose)
+func (cv *ComposeActionValidator) ValidateAction(a task.Action) []error {
+	c, ok := a.(*compose.Compose)
 	if !ok {
 		// FIXME nil or error?
 		return nil

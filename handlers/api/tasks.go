@@ -107,7 +107,7 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 			return nil, err
 		}
 	}
-	errs := a.validator.ValidateTask(t)
+	errs := a.validator.ValidateAction(t.Action)
 	if errs != nil && len(errs) > 0 {
 		fmt.Println("Validate errors", errs)
 		w.WriteHeader(400)

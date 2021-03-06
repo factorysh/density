@@ -1,10 +1,7 @@
 package task
 
 import (
-	"context"
-
 	"github.com/factorysh/density/task/run"
-	"github.com/factorysh/density/task/status"
 )
 
 // Action interface describe behavior of a job

@@ -4,36 +4,36 @@ import (
 	"fmt"
 )
 
-var TaskValidatorRegistry map[string]func(map[string]interface{}) (TaskValidator, error)
+var ActionValidatorRegistry map[string]func(map[string]interface{}) (ActionValidator, error)
 
 func init() {
-	if TaskValidatorRegistry == nil {
-		TaskValidatorRegistry = make(map[string]func(map[string]interface{}) (TaskValidator, error))
+	if ActionValidatorRegistry == nil {
+		ActionValidatorRegistry = make(map[string]func(map[string]interface{}) (ActionValidator, error))
 	}
-	TaskValidatorRegistry["dummy"] = func(map[string]interface{}) (TaskValidator, error) {
-		return &DummyTaskValidator{}, nil
+	ActionValidatorRegistry["dummy"] = func(map[string]interface{}) (ActionValidator, error) {
+		return &DummyActionValidator{}, nil
 	}
 }
 
-type TaskValidator interface {
-	ValidateTask(t *Task) []error
+type ActionValidator interface {
+	ValidateAction(a Action) []error
 }
 
-type DummyTaskValidator struct{}
+type DummyActionValidator struct{}
 
-func (d *DummyTaskValidator) ValidateTask(t *Task) []error {
+func (d *DummyActionValidator) ValidateAction(a Action) []error {
 	return nil
 }
 
 type Validator struct {
 	Validators   map[string]map[string]interface{} `yaml:"validators"`
-	myValidators map[string]TaskValidator
+	myValidators map[string]ActionValidator
 }
 
 func (val *Validator) Register() error {
-	val.myValidators = make(map[string]TaskValidator)
+	val.myValidators = make(map[string]ActionValidator)
 	for k, v := range val.Validators {
-		validator, ok := TaskValidatorRegistry[k]
+		validator, ok := ActionValidatorRegistry[k]
 		if !ok {
 			return fmt.Errorf("No config validator for %s", k)
 		}
@@ -46,19 +46,15 @@ func (val *Validator) Register() error {
 	return nil
 }
 
-func (v *Validator) ValidateTask(t *Task) []error {
+func (v *Validator) ValidateAction(a Action) []error {
 	errs := make([]error, 0)
-	err := t.Action.Validate()
-	if err != nil {
-		errs = append(errs, err)
-	}
-	validator, ok := v.myValidators[t.Action.RegisteredName()]
+	validator, ok := v.myValidators[a.RegisteredName()]
 	if !ok {
-		errs = append(errs, fmt.Errorf("No config for %s", t.Action.RegisteredName()))
+		errs = append(errs, fmt.Errorf("No config for %s", a.RegisteredName()))
 		return errs
 	}
 
-	errz := validator.ValidateTask(t)
+	errz := validator.ValidateAction(a)
 	if errz != nil {
 		for _, err := range errz {
 			errs = append(errs, err)

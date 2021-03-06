@@ -3,7 +3,6 @@ package compose
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/factorysh/density/compose"
 	"github.com/factorysh/density/task"
@@ -20,7 +19,7 @@ validators:
 `
 
 func TestCompose(t *testing.T) {
-	_, ok := task.TaskValidatorRegistry["compose"]
+	_, ok := task.ActionValidatorRegistry["compose"]
 	assert.True(t, ok)
 	var v task.Validator
 	err := yaml.Unmarshal([]byte(simpleValidator), &v)
@@ -29,50 +28,36 @@ func TestCompose(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, a := range []struct {
-		tazk *task.Task
-		err  string
+		action task.Action
+		err    string
 	}{
 		{
-			&task.Task{
-				Owner:           "test",
-				Start:           time.Now(),
-				MaxExectionTime: 30 * time.Second,
-				Action: &compose.Compose{
-					Version: "3.6",
-					Services: map[string]interface{}{
-						"hello": map[string]interface{}{
-							"image":   "busybox",
-							"command": `echo "Hello world"`,
-						},
+			&compose.Compose{
+				Version: "3.6",
+				Services: map[string]interface{}{
+					"hello": map[string]interface{}{
+						"image":   "busybox",
+						"command": `echo "Hello world"`,
 					},
 				},
-				CPU: 2,
-				RAM: 256,
 			},
 			"",
 		},
 		{
-			&task.Task{
-				Owner:           "test",
-				Start:           time.Now(),
-				MaxExectionTime: 30 * time.Second,
-				Action: &compose.Compose{
-					Version: "3.6",
-					Services: map[string]interface{}{
-						"hello": map[string]interface{}{
-							"build":   ".",
-							"image":   "busybox",
-							"command": `echo "Hello world"`,
-						},
+			&compose.Compose{
+				Version: "3.6",
+				Services: map[string]interface{}{
+					"hello": map[string]interface{}{
+						"build":   ".",
+						"image":   "busybox",
+						"command": `echo "Hello world"`,
 					},
 				},
-				CPU: 2,
-				RAM: 256,
 			},
 			"Do not build inplace",
 		},
 	} {
-		errs := v.ValidateTask(a.tazk)
+		errs := v.ValidateAction(a.action)
 		if a.err == "" {
 			assert.Len(t, errs, 0)
 		} else {
