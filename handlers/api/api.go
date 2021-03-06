@@ -16,6 +16,7 @@ import (
 type API struct {
 	schd      *scheduler.Scheduler
 	validator *task.Validator
+	recompose *task.ActionRecomposator
 	authKey   string
 }
 

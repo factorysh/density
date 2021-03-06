@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/docker/docker/client"
 	"github.com/factorysh/density/compose"
 	"github.com/factorysh/density/runner"
 	"github.com/factorysh/density/scheduler"
@@ -28,7 +29,18 @@ func TestAPI(t *testing.T) {
 	dir, err := ioutil.TempDir(os.TempDir(), "scheduler-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
-	s := scheduler.New(scheduler.NewResources(4, 16*1024), runner.New(dir), store.NewMemoryStore())
+	docker, err := client.NewEnvClient()
+	assert.NoError(t, err)
+	recompose := &task.Recomposator{
+		Recomposators: map[string]map[string]interface{}{
+			"compose": {
+				"VolumeInVolumes": "./volumes",
+			},
+		},
+	}
+	err = recompose.Register(docker, "bob")
+	assert.NoError(t, err)
+	s := scheduler.New(scheduler.NewResources(4, 16*1024), runner.New(dir, recompose), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go s.Start(ctx)

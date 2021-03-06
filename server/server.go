@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/client"
 	"github.com/factorysh/density/compose"
 	handlers "github.com/factorysh/density/handlers/api"
 	"github.com/factorysh/density/runner"
@@ -44,11 +45,27 @@ func New(addr, dataDir, authKey string, cpu, ram int) (*Server, error) {
 		return nil, err
 	}
 
+	docker, err := client.NewEnvClient()
+	if err != nil {
+		return nil, err
+	}
+
+	recompose := &task.Recomposator{
+		Recomposators: map[string]map[string]interface{}{
+			"compose": {
+				"VolumeInVolumes": "./volumes",
+			},
+		},
+	}
+	err = recompose.Register(docker, "bob")
+	if err != nil {
+		return nil, err
+	}
 	return &Server{
 		AuthKey: authKey,
 		Addr:    addr,
 		Scheduler: scheduler.New(scheduler.NewResources(cpu, ram),
-			runner.New(path.Join(dataDir, "wd")), store),
+			runner.New(path.Join(dataDir, "wd"), recompose), store),
 	}, nil
 }
 

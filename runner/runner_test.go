@@ -23,7 +23,7 @@ func TestRunner(t *testing.T) {
 	assert.NoError(t, err)
 	fmt.Println(f)
 	defer os.Remove(f)
-	runner := New(f)
+	runner := New(f, nil)
 	jtask := `
 	{
 		"cpu": 1,
