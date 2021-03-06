@@ -58,8 +58,11 @@ func (v *Validator) ValidateTask(t *Task) []error {
 		return errs
 	}
 
-	for _, err := range validator.ValidateTask(t) {
-		errs = append(errs, err)
+	errz := validator.ValidateTask(t)
+	if errz != nil {
+		for _, err := range errz {
+			errs = append(errs, err)
+		}
 	}
 	return errs
 }
