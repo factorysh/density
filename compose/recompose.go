@@ -8,12 +8,9 @@ import (
 )
 
 func StandardRecomposator(docker *client.Client) (*Recomposator, error) {
-	r, err := NewRecomposator(docker)
-	if err != nil {
-		return nil, err
-	}
-	r.UseVolumePatcher(PatchVolumeInVolumes)
-	return r, nil
+	return NewRecomposator(docker, map[string]interface{}{
+		"VolumeInVolumes": "./volumes",
+	})
 }
 
 type VolumePatcher func(src string) (string, error)
@@ -34,33 +31,55 @@ func (r *Recomposator) UseServicePatcher(p ServicePatcher) {
 	r.servicePatchers = append(r.servicePatchers, p)
 }
 
-func PatchVolumeInVolumes(volume string) (string, error) {
-	slugs := strings.Split(volume, ":")
-	src := slugs[0]
-	if !strings.HasPrefix(src, "./") {
-		return "", fmt.Errorf("Wrong volume prefix: %s", src)
+func PatchVolumeInVolumes(target string) (VolumePatcher, error) {
+	if !strings.HasPrefix(target, "./") {
+		return nil, fmt.Errorf("Target must be relative: %s", target)
 	}
-	ro := ""
-	if len(slugs) == 3 {
-		ro = fmt.Sprintf(":%s", slugs[2])
-	}
-	if !strings.HasPrefix(src, "./volumes/") {
-		return fmt.Sprintf("./volumes/%s:%s%s", src[2:], slugs[1], ro), nil
-	}
-	return src, nil
+	return func(volume string) (string, error) {
+		slugs := strings.Split(volume, ":")
+		src := slugs[0]
+		if !strings.HasPrefix(src, "./") {
+			return "", fmt.Errorf("Wrong volume prefix: %s", src)
+		}
+		ro := ""
+		if len(slugs) == 3 {
+			ro = fmt.Sprintf(":%s", slugs[2])
+		}
+		if !strings.HasPrefix(src, fmt.Sprintf("%s/", target)) {
+			return fmt.Sprintf("%s/%s:%s%s", target, src[2:], slugs[1], ro), nil
+		}
+		return src, nil
+	}, nil
 }
 
-func NewRecomposator(docker *client.Client) (*Recomposator, error) {
+func NewRecomposator(docker *client.Client, cfg map[string]interface{}) (*Recomposator, error) {
 	n, err := NewNetworks(docker)
 	if err != nil {
 		return nil, err
 	}
-	return &Recomposator{
+	r := &Recomposator{
 		docker:          docker,
 		networks:        n,
 		volumePatchers:  make([]VolumePatcher, 0),
 		servicePatchers: make([]ServicePatcher, 0),
-	}, nil
+	}
+	for k, v := range cfg {
+		switch k {
+		case "VolumeInVolume":
+			path, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf("VolumeInVolume argument is a string: %v", v)
+			}
+			patcher, err := PatchVolumeInVolumes(path)
+			if err != nil {
+				return nil, err
+			}
+			r.UseVolumePatcher(patcher)
+		default:
+			return nil, fmt.Errorf("Unknown patch: %s", k)
+		}
+	}
+	return r, nil
 }
 
 // Recompose take a naive and validated Compose and return a Compose as it will be run
