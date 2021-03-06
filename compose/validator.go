@@ -80,7 +80,7 @@ func NewComposeValidtor(cfg map[string]interface{}) (*ComposeValidator, error) {
 			validator.UseServiceValidator(ValidateNoBuild)
 		case "NoLogging":
 			validator.UseServiceValidator(ValidateNoLogging)
-		case "VolumeInPlace":
+		case "VolumeInplace":
 			validator.UseVolumeValidator(ValidateVolumeInplace)
 		case "NoDotDot":
 			validator.UseVolumeValidator(ValidateNoDotDot)
