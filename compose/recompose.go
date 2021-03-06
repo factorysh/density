@@ -65,7 +65,7 @@ func NewRecomposator(docker *client.Client, cfg map[string]interface{}) (*Recomp
 	}
 	for k, v := range cfg {
 		switch k {
-		case "VolumeInVolume":
+		case "VolumeInVolumes":
 			path, ok := v.(string)
 			if !ok {
 				return nil, fmt.Errorf("VolumeInVolume argument is a string: %v", v)
