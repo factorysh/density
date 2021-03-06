@@ -3,7 +3,7 @@ test: venv
 	AUTH_KEY=${AUTH_KEY} ./venv/bin/pytest -s .
 
 start:
-	AUTH_KEY=s3cr3t ../bin/density
+	AUTH_KEY=s3cr3t ../bin/density serve
 
 venv:
 	python3 -m venv venv
