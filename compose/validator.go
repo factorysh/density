@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/factorysh/density/task"
 )
 
 var StandardValidtator *ComposeValidator
@@ -15,6 +17,10 @@ func init() {
 	StandardValidtator.UseVolumeValidator(ValidateVolumeInplace)
 	StandardValidtator.UseVolumeValidator(ValidateNoDotDot)
 	StandardValidtator.UseVolumeValidator(ValidateNotAsDeep(8))
+
+	task.TaskValidatorRegistry["compose"] = func(cfg map[string]interface{}) task.TaskValidator {
+		return StandardValidtator
+	}
 }
 
 type VolumeValidator func(source, destination string, readOnly bool) error
@@ -133,4 +139,13 @@ func (cv *ComposeValidator) Validate(c *Compose) []error {
 		return nil
 	})
 	return errs
+}
+
+func (cv *ComposeValidator) ValidateTask(t *task.Task) []error {
+	c, ok := t.Action.(*Compose)
+	if !ok {
+		// FIXME nil or error?
+		return nil
+	}
+	return cv.Validate(c)
 }
