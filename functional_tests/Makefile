@@ -3,7 +3,9 @@ test: venv
 	AUTH_KEY=${AUTH_KEY} ./venv/bin/pytest -s .
 
 start:
-	AUTH_KEY=s3cr3t ../bin/density serve
+	docker network prune -f
+	rm -rf /tmp/density
+	AUTH_KEY=${AUTH_KEY} DATA_DIR=/tmp/density ../bin/density serve
 
 venv:
 	python3 -m venv venv
