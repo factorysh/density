@@ -14,10 +14,12 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/factorysh/density/compose"
 	"github.com/factorysh/density/runner"
 	"github.com/factorysh/density/scheduler"
 	"github.com/factorysh/density/store"
 	"github.com/factorysh/density/task"
+	_ "github.com/factorysh/density/task/compose" // Needed for registering validator
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,7 +34,14 @@ func TestAPI(t *testing.T) {
 	go s.Start(ctx)
 	key := "plop"
 	router := mux.NewRouter()
-	RegisterAPI(router.PathPrefix("/api").Subrouter(), s, key)
+	v := &task.Validator{
+		Validators: map[string]map[string]interface{}{
+			"compose": compose.StandardConfig,
+		},
+	}
+	err = v.Register()
+	assert.NoError(t, err)
+	RegisterAPI(router.PathPrefix("/api").Subrouter(), s, v, key)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 

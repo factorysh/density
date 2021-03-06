@@ -9,7 +9,6 @@ import (
 	rawCompose "github.com/factorysh/density/compose"
 	"github.com/factorysh/density/input/compose"
 	"github.com/factorysh/density/owner"
-	"github.com/factorysh/density/scheduler"
 	"github.com/factorysh/density/task"
 	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
@@ -24,7 +23,7 @@ const JOB = "job"
 const MAXFORMMEM = 1024
 
 // HandleGetTasks handles a get on /schedules endpoint
-func HandleGetTasks(schd *scheduler.Scheduler, u *owner.Owner, w http.ResponseWriter,
+func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
 	r *http.Request) (interface{}, error) {
 	var ts []*task.Task
 	vars := mux.Vars(r)
@@ -40,21 +39,21 @@ func HandleGetTasks(schd *scheduler.Scheduler, u *owner.Owner, w http.ResponseWr
 	if u.Admin {
 		if filter {
 			//  request with a filter
-			ts = schd.Filter(o)
+			ts = a.schd.Filter(o)
 		} else {
 			// request all
-			ts = schd.List()
+			ts = a.schd.List()
 		}
 	} else {
 		// used context information to get current user name
-		ts = schd.Filter(u.Name)
+		ts = a.schd.Filter(u.Name)
 	}
 
 	return ts, nil
 }
 
-// HandlePostTasks handles a post on /schedules endpoint
-func HandlePostTasks(schd *scheduler.Scheduler, u *owner.Owner,
+// HandlePostTasks handles a post on /tasks endpoint
+func (a *API) HandlePostTasks(u *owner.Owner,
 	w http.ResponseWriter, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
 	o, explicit := vars[owner.OWNER]
@@ -107,7 +106,16 @@ func HandlePostTasks(schd *scheduler.Scheduler, u *owner.Owner,
 			w.WriteHeader(http.StatusInternalServerError)
 			return nil, err
 		}
-
+	}
+	errs := a.validator.ValidateTask(t)
+	if errs != nil && len(errs) > 0 {
+		fmt.Println("Validate errors", errs)
+		w.WriteHeader(400)
+		errz := make([]string, len(errs))
+		for i := 0; i < len(errs); i++ {
+			errz[i] = errs[i].Error()
+		}
+		json.NewEncoder(w).Encode(errz)
 	}
 	// unpriviledged user can't create explicit job
 	if !u.Admin && explicit {
@@ -130,20 +138,20 @@ func HandlePostTasks(schd *scheduler.Scheduler, u *owner.Owner,
 	}
 
 	// add tasks to current tasks
-	_, err := schd.Add(t)
+	_, err := a.schd.Add(t)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil, err
 	}
 
-	fmt.Println(schd.List())
+	fmt.Println(a.schd.List())
 
 	w.WriteHeader(http.StatusCreated)
 	return t, err
 }
 
 // HandleDeleteTasks handle a delete on schedules
-func HandleDeleteTasks(schd *scheduler.Scheduler, u *owner.Owner,
+func (a *API) HandleDeleteTasks(u *owner.Owner,
 	w http.ResponseWriter, r *http.Request) (interface{}, error) {
 	params := r.URL.Query()
 	vars := mux.Vars(r)
@@ -156,7 +164,7 @@ func HandleDeleteTasks(schd *scheduler.Scheduler, u *owner.Owner,
 	}
 
 	if _, wait := params["wait_for"]; wait {
-		err := schd.Cancel(uuid)
+		err := a.schd.Cancel(uuid)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return nil, err
@@ -165,7 +173,7 @@ func HandleDeleteTasks(schd *scheduler.Scheduler, u *owner.Owner,
 		return nil, nil
 	}
 
-	go schd.Cancel(uuid)
+	go a.schd.Cancel(uuid)
 	w.WriteHeader(http.StatusAccepted)
 
 	return nil, nil

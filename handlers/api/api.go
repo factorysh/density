@@ -8,21 +8,33 @@ import (
 	"github.com/factorysh/density/middlewares"
 	"github.com/factorysh/density/owner"
 	"github.com/factorysh/density/scheduler"
+	"github.com/factorysh/density/task"
 	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
 )
 
-func RegisterAPI(router *mux.Router, schd *scheduler.Scheduler, authKey string) {
-	router.Use(middlewares.Auth(authKey))
-	router.HandleFunc("/tasks/{owner}", wrapMyHandler(schd, HandleGetTasks)).Methods(http.MethodGet)
-	router.HandleFunc("/task/{uuid}", wrapMyHandler(schd, HandleGetTask)).Methods(http.MethodGet)
-	router.HandleFunc("/tasks", wrapMyHandler(schd, HandleGetTasks)).Methods(http.MethodGet)
-	router.HandleFunc("/tasks", wrapMyHandler(schd, HandlePostTasks)).Methods(http.MethodPost)
-	router.HandleFunc("/tasks/{owner}", wrapMyHandler(schd, HandlePostTasks)).Methods(http.MethodPost)
-	router.HandleFunc("/tasks/{job}", wrapMyHandler(schd, HandleDeleteTasks)).Methods(http.MethodDelete)
+type API struct {
+	schd      *scheduler.Scheduler
+	validator *task.Validator
+	authKey   string
 }
 
-func wrapMyHandler(schd *scheduler.Scheduler, handler func(*scheduler.Scheduler, *owner.Owner, http.ResponseWriter,
+func RegisterAPI(router *mux.Router, schd *scheduler.Scheduler, validator *task.Validator, authKey string) {
+	api := &API{
+		schd:      schd,
+		validator: validator,
+		authKey:   authKey,
+	}
+	router.Use(middlewares.Auth(authKey))
+	router.HandleFunc("/tasks/{owner}", api.wrapMyHandler(api.HandleGetTasks)).Methods(http.MethodGet)
+	router.HandleFunc("/task/{uuid}", api.wrapMyHandler(api.HandleGetTask)).Methods(http.MethodGet)
+	router.HandleFunc("/tasks", api.wrapMyHandler(api.HandleGetTasks)).Methods(http.MethodGet)
+	router.HandleFunc("/tasks", api.wrapMyHandler(api.HandlePostTasks)).Methods(http.MethodPost)
+	router.HandleFunc("/tasks/{owner}", api.wrapMyHandler(api.HandlePostTasks)).Methods(http.MethodPost)
+	router.HandleFunc("/tasks/{job}", api.wrapMyHandler(api.HandleDeleteTasks)).Methods(http.MethodDelete)
+}
+
+func (a *API) wrapMyHandler(handler func(*owner.Owner, http.ResponseWriter,
 	*http.Request) (interface{}, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
@@ -33,7 +45,7 @@ func wrapMyHandler(schd *scheduler.Scheduler, handler func(*scheduler.Scheduler,
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		data, err := handler(schd, u, w, r)
+		data, err := handler(u, w, r)
 		if err != nil {
 			// FIXME correct error handling
 			if hub == nil {

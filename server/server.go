@@ -9,10 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/factorysh/density/compose"
 	handlers "github.com/factorysh/density/handlers/api"
 	"github.com/factorysh/density/runner"
 	"github.com/factorysh/density/scheduler"
 	"github.com/factorysh/density/store"
+	"github.com/factorysh/density/task"
 	"github.com/factorysh/density/version"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/mux"
@@ -79,7 +81,16 @@ func (s *Server) Run(ctx context.Context) {
 		w.Header().Set("Content-type", "text/plain")
 		w.Write([]byte(version.Version()))
 	}).Methods(http.MethodGet)
-	handlers.RegisterAPI(router.PathPrefix("/api").Subrouter(), s.Scheduler, s.AuthKey)
+	v := &task.Validator{
+		Validators: map[string]map[string]interface{}{
+			"compose": compose.StandardConfig,
+		},
+	}
+	err = v.Register()
+	if err != nil { // FIXME it's ugly
+		panic(err)
+	}
+	handlers.RegisterAPI(router.PathPrefix("/api").Subrouter(), s.Scheduler, v, s.AuthKey)
 	server := &http.Server{
 		Addr:    s.Addr,
 		Handler: sentryHandler.HandleFunc(router.ServeHTTP),

@@ -6,14 +6,13 @@ import (
 	"net/http"
 
 	"github.com/factorysh/density/owner"
-	"github.com/factorysh/density/scheduler"
 	"github.com/factorysh/density/task"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
 // HandleGetTask will retreive a task, convert it into a resp and return the data
-func HandleGetTask(schd *scheduler.Scheduler, u *owner.Owner, _ http.ResponseWriter, r *http.Request) (interface{}, error) {
+func (a *API) HandleGetTask(u *owner.Owner, _ http.ResponseWriter, r *http.Request) (interface{}, error) {
 	fmt.Println(u)
 
 	vars := mux.Vars(r)
@@ -27,7 +26,7 @@ func HandleGetTask(schd *scheduler.Scheduler, u *owner.Owner, _ http.ResponseWri
 		return nil, err
 	}
 
-	t, err := schd.GetTask(id)
+	t, err := a.schd.GetTask(id)
 	if err != nil {
 		return nil, err
 	}
