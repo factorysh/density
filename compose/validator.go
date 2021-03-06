@@ -4,25 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/factorysh/density/task"
 )
 
 var StandardValidtator *ComposeValidator
 
 func init() {
-	StandardValidtator = NewComposeValidtor()
-	StandardValidtator.UseServiceValidator(ValidateNoBuild)
-	StandardValidtator.UseServiceValidator(ValidateNoLogging)
-	StandardValidtator.UseVolumeValidator(ValidateVolumeInplace)
-	StandardValidtator.UseVolumeValidator(ValidateNoDotDot)
-	StandardValidtator.UseVolumeValidator(ValidateNotAsDeep(8))
-
-	// FIXME registering the ComposeValidator add a link to task module.
-	// Maybe in another module ?
-	task.TaskValidatorRegistry["compose"] = func(cfg map[string]interface{}) task.TaskValidator {
-		return StandardValidtator
-	}
+	StandardValidtator, _ = NewComposeValidtor(map[string]interface{}{
+		"NoBuild":       nil,
+		"NoLogging":     nil,
+		"VolumeInplace": nil,
+		"NoDotDot":      nil,
+		"NotAsDeep":     8,
+	})
 }
 
 type VolumeValidator func(source, destination string, readOnly bool) error
@@ -74,11 +67,32 @@ type ComposeValidator struct {
 	serviceValidators []ServiceValidator
 }
 
-func NewComposeValidtor() *ComposeValidator {
-	return &ComposeValidator{
+func NewComposeValidtor(cfg map[string]interface{}) (*ComposeValidator, error) {
+	validator := &ComposeValidator{
 		volumeValidators:  make([]VolumeValidator, 0),
 		serviceValidators: make([]ServiceValidator, 0),
 	}
+	for k, v := range cfg {
+		switch k {
+		case "NoBuild":
+			validator.UseServiceValidator(ValidateNoBuild)
+		case "NoLogging":
+			validator.UseServiceValidator(ValidateNoLogging)
+		case "VolumeInPlace":
+			validator.UseVolumeValidator(ValidateVolumeInplace)
+		case "NoDotDot":
+			validator.UseVolumeValidator(ValidateNoDotDot)
+		case "NotAsDeep":
+			deep, ok := v.(int)
+			if !ok {
+				return nil, fmt.Errorf("NotAsDeep argument must be an int : %v", v)
+			}
+			validator.UseVolumeValidator(ValidateNotAsDeep(deep))
+		default:
+			return nil, fmt.Errorf("Unknown validator: %s", k)
+		}
+	}
+	return validator, nil
 }
 
 func (cv *ComposeValidator) UseVolumeValidator(v VolumeValidator) {
@@ -141,13 +155,4 @@ func (cv *ComposeValidator) Validate(c *Compose) []error {
 		return nil
 	})
 	return errs
-}
-
-func (cv *ComposeValidator) ValidateTask(t *task.Task) []error {
-	c, ok := t.Action.(*Compose)
-	if !ok {
-		// FIXME nil or error?
-		return nil
-	}
-	return cv.Validate(c)
 }

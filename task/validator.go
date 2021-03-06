@@ -4,14 +4,14 @@ import (
 	"fmt"
 )
 
-var TaskValidatorRegistry map[string]func(map[string]interface{}) TaskValidator
+var TaskValidatorRegistry map[string]func(map[string]interface{}) (TaskValidator, error)
 
 func init() {
 	if TaskValidatorRegistry == nil {
-		TaskValidatorRegistry = make(map[string]func(map[string]interface{}) TaskValidator)
+		TaskValidatorRegistry = make(map[string]func(map[string]interface{}) (TaskValidator, error))
 	}
-	TaskValidatorRegistry["dummy"] = func(map[string]interface{}) TaskValidator {
-		return &DummyTaskValidator{}
+	TaskValidatorRegistry["dummy"] = func(map[string]interface{}) (TaskValidator, error) {
+		return &DummyTaskValidator{}, nil
 	}
 }
 
@@ -37,7 +37,11 @@ func (val *Validator) Register() error {
 		if !ok {
 			return fmt.Errorf("No config validator for %s", k)
 		}
-		val.myValidators[k] = validator(v)
+		var err error
+		val.myValidators[k], err = validator(v)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
