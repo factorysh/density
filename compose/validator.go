@@ -7,15 +7,17 @@ import (
 )
 
 var StandardValidtator *ComposeValidator
+var StandardConfig map[string]interface{}
 
 func init() {
-	StandardValidtator, _ = NewComposeValidtor(map[string]interface{}{
+	StandardConfig = map[string]interface{}{
 		"NoBuild":       nil,
 		"NoLogging":     nil,
 		"VolumeInplace": nil,
 		"NoDotDot":      nil,
 		"NotAsDeep":     8,
-	})
+	}
+	StandardValidtator, _ = NewComposeValidtor(StandardConfig)
 }
 
 type VolumeValidator func(source, destination string, readOnly bool) error
