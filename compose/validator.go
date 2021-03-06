@@ -18,6 +18,8 @@ func init() {
 	StandardValidtator.UseVolumeValidator(ValidateNoDotDot)
 	StandardValidtator.UseVolumeValidator(ValidateNotAsDeep(8))
 
+	// FIXME registering the ComposeValidator add a link to task module.
+	// Maybe in another module ?
 	task.TaskValidatorRegistry["compose"] = func(cfg map[string]interface{}) task.TaskValidator {
 		return StandardValidtator
 	}
