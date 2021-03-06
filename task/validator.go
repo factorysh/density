@@ -30,21 +30,6 @@ type Validator struct {
 	myValidators map[string]TaskValidator
 }
 
-/*
-func (v *Validator) UnmarshalYAML(value *yaml.Node) error {
-	if value.Kind == yaml.DocumentNode {
-		return nil
-	}
-
-	for i := 0; i < len(value.Content); i += 2 {
-		k := value.Content[i]
-		v := value.Content[i+1]
-		fmt.Println(k, v)
-	}
-	return nil
-}
-*/
-
 func (val *Validator) Register() error {
 	val.myValidators = make(map[string]TaskValidator)
 	for k, v := range val.Validators {
