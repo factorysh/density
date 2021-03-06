@@ -16,6 +16,7 @@ import (
 	"github.com/factorysh/density/scheduler"
 	"github.com/factorysh/density/store"
 	"github.com/factorysh/density/task"
+	_ "github.com/factorysh/density/task/compose" // Register validator and recomposator
 	"github.com/factorysh/density/version"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/mux"
