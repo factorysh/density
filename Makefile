@@ -23,6 +23,7 @@ test:
 	github.com/factorysh/density/store \
 	github.com/factorysh/density/compose \
 	github.com/factorysh/density/task \
+	github.com/factorysh/density/task/compose \
 	github.com/factorysh/density/task/status \
 	github.com/factorysh/density/runner \
 	github.com/factorysh/density/pubsub \
