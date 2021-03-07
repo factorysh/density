@@ -2,14 +2,12 @@ package compose
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
-	_task "github.com/factorysh/density/task"
 	_status "github.com/factorysh/density/task/status"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -266,25 +264,4 @@ func TestUnfindableMain(t *testing.T) {
 	depths := graph.ByServiceDepth()
 	_, err = depths.findLeader()
 	assert.EqualError(t, err, "Leader ambiguity between nodes rails and sidekiq")
-}
-
-func TestJson(t *testing.T) {
-	var task _task.Task
-	err := json.Unmarshal([]byte(`{
-		"cpu": 2,
-		"ram": 128,
-		"max_execution_time": "30s",
-		"action": {
-			"compose": {
-				"version": "3",
-				"services": {
-					"hello": {
-						"image":"busybox:latest",
-						"command": "echo World"
-					}
-				}
-			}
-		}
-	}`), &task)
-	assert.NoError(t, err)
 }
