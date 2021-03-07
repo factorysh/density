@@ -3,10 +3,21 @@ package compose
 import (
 	"github.com/factorysh/density/compose"
 	"github.com/factorysh/density/task"
+	"github.com/factorysh/density/task/action"
+	"github.com/factorysh/density/task/run"
 )
 
 func init() {
 	task.ActionValidatorRegistry["compose"] = ComposeActionValidatorFactory
+	task.ActionsRegistry["compose"] = func() action.Action {
+		return compose.NewCompose()
+	}
+	task.RunRegistry["compose"] = func() run.Run {
+		return &compose.DockerRun{
+			Id:   "",
+			Path: "",
+		}
+	}
 }
 
 func ComposeActionValidatorFactory(cfg map[string]interface{}) (task.ActionValidator, error) {

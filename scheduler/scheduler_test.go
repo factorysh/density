@@ -15,6 +15,7 @@ import (
 	"github.com/factorysh/density/runner"
 	"github.com/factorysh/density/store"
 	_task "github.com/factorysh/density/task"
+	_ "github.com/factorysh/density/task/compose" // registering compose
 	_status "github.com/factorysh/density/task/status"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

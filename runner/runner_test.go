@@ -12,10 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/factorysh/density/compose" // register compose.Compose as task.Action
 	_task "github.com/factorysh/density/task"
 	_status "github.com/factorysh/density/task/status"
 	"github.com/stretchr/testify/assert"
+
+	_ "github.com/factorysh/density/task/compose" // register compose.Compose as task.Action
 )
 
 func TestRunner(t *testing.T) {

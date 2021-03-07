@@ -15,17 +15,9 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/factorysh/density/task"
-	"github.com/factorysh/density/task/action"
 	_run "github.com/factorysh/density/task/run"
 	"gopkg.in/yaml.v3"
 )
-
-func init() {
-	task.ActionsRegistry["compose"] = func() action.Action {
-		return NewCompose()
-	}
-}
 
 // Compose is a docker-compose project
 // FIXME there is more first level keys, like volume or networks

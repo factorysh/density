@@ -9,18 +9,11 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/factorysh/density/task"
 	_run "github.com/factorysh/density/task/run"
 	_status "github.com/factorysh/density/task/status"
 )
 
 func init() {
-	task.RunRegistry["compose"] = func() _run.Run {
-		return &DockerRun{
-			Id:   "",
-			Path: "",
-		}
-	}
 }
 
 // DockerRun implements task.Run
