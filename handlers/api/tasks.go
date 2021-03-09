@@ -121,6 +121,7 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 			errz[i] = errs[i].Error()
 		}
 		json.NewEncoder(w).Encode(errz)
+		return nil, fmt.Errorf("Validate errors %v", errs)
 	}
 	// unpriviledged user can't create explicit job
 	if !u.Admin && explicit {
