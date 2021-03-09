@@ -15,19 +15,14 @@ import (
 func Auth(key string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			h := r.Header.Get("Authorization")
-			if h == "" {
+			token, err := getToken(r)
+			if err != nil {
+				fmt.Println(err)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
-			bToken := strings.Split(h, " ")
-			if len(bToken) != 2 {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			t, err := jwt.Parse(bToken[1], func(token *jwt.Token) (interface{}, error) {
+			t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 				}
@@ -71,4 +66,46 @@ func Auth(key string) func(next http.Handler) http.Handler {
 
 		})
 	}
+}
+
+// getToken from Header or Cookie or Param
+func getToken(r *http.Request) (string, error) {
+	getters := []func(*http.Request) (string, error){getTokenFromHeader, getTokenFromParam}
+
+	for _, fun := range getters {
+		token, err := fun(r)
+		if err == nil && token != "" {
+			return token, err
+		}
+	}
+
+	return "", fmt.Errorf("All authentication mechanisms failed")
+}
+
+func getTokenFromHeader(r *http.Request) (string, error) {
+	h := r.Header.Get("Authorization")
+	bToken := strings.Split(h, " ")
+	if len(bToken) != 2 {
+		return "", fmt.Errorf("Invalid authorization header %v", h)
+	}
+
+	if bToken[0] != "Bearer" {
+		return "", fmt.Errorf("Authorization header is not a bearer token %v", h)
+	}
+
+	return bToken[1], nil
+}
+
+func getTokenFromParam(r *http.Request) (string, error) {
+	return r.URL.Query().Get("token"), nil
+}
+
+func getTokenFromCookies(r http.Request) (string, error) {
+
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		return "", err
+	}
+
+	return cookie.Value, nil
 }
