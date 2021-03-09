@@ -11,11 +11,14 @@ var StandardConfig map[string]interface{}
 
 func init() {
 	StandardConfig = map[string]interface{}{
-		"NoBuild":       nil,
-		"NoLogging":     nil,
-		"VolumeInplace": nil,
-		"NoDotDot":      nil,
-		"NotAsDeep":     8,
+		"NoBuild":         nil,
+		"NoLogging":       nil,
+		"VolumeInplace":   nil,
+		"NoDotDot":        nil,
+		"NotAsDeep":       8,
+		"NoCapAdd":        nil,
+		"NoCgroupParent":  nil,
+		"NoContainerName": nil,
 	}
 	StandardValidtator, _ = NewComposeValidtor(StandardConfig)
 }
@@ -64,6 +67,30 @@ func ValidateNotAsDeep(deep int) VolumeValidator {
 	}
 }
 
+func ValidateNoCapAdd(service map[string]interface{}) error {
+	_, ok := service["cap_add"]
+	if ok {
+		return errors.New("cap_add is not allowed")
+	}
+	return nil
+}
+
+func ValidateNoCgroupParent(service map[string]interface{}) error {
+	_, ok := service["cgroup_parent"]
+	if ok {
+		return errors.New("cgroup_parent is not allowed")
+	}
+	return nil
+}
+
+func ValidateNoContainerName(service map[string]interface{}) error {
+	_, ok := service["container_name"]
+	if ok {
+		return errors.New("container_name is not allowed")
+	}
+	return nil
+}
+
 type ComposeValidator struct {
 	volumeValidators  []VolumeValidator
 	serviceValidators []ServiceValidator
@@ -90,6 +117,12 @@ func NewComposeValidtor(cfg map[string]interface{}) (*ComposeValidator, error) {
 				return nil, fmt.Errorf("NotAsDeep argument must be an int : %v", v)
 			}
 			validator.UseVolumeValidator(ValidateNotAsDeep(deep))
+		case "NoCapAdd":
+			validator.UseServiceValidator(ValidateNoCapAdd)
+		case "NoCgroupParent":
+			validator.UseServiceValidator(ValidateNoCgroupParent)
+		case "NoContainerName":
+			validator.UseServiceValidator(ValidateNoContainerName)
 		default:
 			return nil, fmt.Errorf("Unknown validator: %s", k)
 		}
