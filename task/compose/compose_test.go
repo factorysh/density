@@ -54,7 +54,7 @@ func TestCompose(t *testing.T) {
 					},
 				},
 			},
-			"Do not build inplace",
+			"the build config is not available",
 		},
 	} {
 		errs := v.ValidateAction(a.action)
@@ -62,7 +62,7 @@ func TestCompose(t *testing.T) {
 			assert.Len(t, errs, 0)
 		} else {
 			assert.Len(t, errs, 1)
-			assert.True(t, strings.HasPrefix(errs[0].Error(), a.err))
+			assert.True(t, strings.HasPrefix(errs[0].Error(), a.err), errs[0].Error())
 		}
 	}
 }

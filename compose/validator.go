@@ -1,46 +1,55 @@
 package compose
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
 	"strings"
+	"unicode"
 )
 
-var StandardValidtator *ComposeValidator
-var StandardConfig map[string]interface{}
+var (
+	StandardValidtator *ComposeValidator
+	StandardConfig     map[string]interface{}
+	badConfig          map[string]string
+)
 
 func init() {
-	StandardConfig = map[string]interface{}{
-		"NoBuild":         nil,
-		"NoLogging":       nil,
-		"VolumeInplace":   nil,
-		"NoDotDot":        nil,
-		"NotAsDeep":       8,
-		"NoCapAdd":        nil,
-		"NoCgroupParent":  nil,
-		"NoContainerName": nil,
+	badConfig = make(map[string]string)
+	for _, config := range []string{
+		"container_name",
+		"cgroup_parent",
+		"logging",
+		"cap_add",
+		"build",
+		"domainname",
+		"hostname",
+		"ipc",
+		"mac_address",
+		"privileged",
+		"stdin_open",
+		"tty",
+	} {
+		badConfig[SnakeToCamel(config)] = config
 	}
-	StandardValidtator, _ = NewComposeValidtor(StandardConfig)
+
+	StandardConfig = map[string]interface{}{
+		"VolumeInplace": nil,
+		"NoDotDot":      nil,
+		"NotAsDeep":     8,
+	}
+	for bad := range badConfig {
+		StandardConfig["No"+bad] = nil
+	}
+
+	var err error
+	StandardValidtator, err = NewComposeValidtor(StandardConfig)
+	if err != nil {
+		panic(err)
+	}
 }
 
 type VolumeValidator func(source, destination string, readOnly bool) error
 type ServiceValidator func(service map[string]interface{}) error
-
-func ValidateNoBuild(service map[string]interface{}) error {
-	_, ok := service["build"]
-	if ok {
-		return errors.New("Do not build inplace")
-	}
-	return nil
-}
-
-func ValidateNoLogging(service map[string]interface{}) error {
-	_, ok := service["logging"]
-	if ok {
-		return errors.New("The logging is handled by the supervisor")
-	}
-	return nil
-}
 
 func ValidateVolumeInplace(src, dest string, ro bool) error {
 	if !strings.HasPrefix(src, "./") {
@@ -67,46 +76,20 @@ func ValidateNotAsDeep(deep int) VolumeValidator {
 	}
 }
 
-func ValidateNoCapAdd(service map[string]interface{}) error {
-	_, ok := service["cap_add"]
-	if ok {
-		return errors.New("cap_add is not allowed")
-	}
-	return nil
-}
-
-func ValidateNoCgroupParent(service map[string]interface{}) error {
-	_, ok := service["cgroup_parent"]
-	if ok {
-		return errors.New("cgroup_parent is not allowed")
-	}
-	return nil
-}
-
-func ValidateNoContainerName(service map[string]interface{}) error {
-	_, ok := service["container_name"]
-	if ok {
-		return errors.New("container_name is not allowed")
-	}
-	return nil
-}
-
 type ComposeValidator struct {
 	volumeValidators  []VolumeValidator
 	serviceValidators []ServiceValidator
+	badConfig         []string
 }
 
 func NewComposeValidtor(cfg map[string]interface{}) (*ComposeValidator, error) {
 	validator := &ComposeValidator{
 		volumeValidators:  make([]VolumeValidator, 0),
 		serviceValidators: make([]ServiceValidator, 0),
+		badConfig:         make([]string, 0),
 	}
 	for k, v := range cfg {
 		switch k {
-		case "NoBuild":
-			validator.UseServiceValidator(ValidateNoBuild)
-		case "NoLogging":
-			validator.UseServiceValidator(ValidateNoLogging)
 		case "VolumeInplace":
 			validator.UseVolumeValidator(ValidateVolumeInplace)
 		case "NoDotDot":
@@ -117,14 +100,18 @@ func NewComposeValidtor(cfg map[string]interface{}) (*ComposeValidator, error) {
 				return nil, fmt.Errorf("NotAsDeep argument must be an int : %v", v)
 			}
 			validator.UseVolumeValidator(ValidateNotAsDeep(deep))
-		case "NoCapAdd":
-			validator.UseServiceValidator(ValidateNoCapAdd)
-		case "NoCgroupParent":
-			validator.UseServiceValidator(ValidateNoCgroupParent)
-		case "NoContainerName":
-			validator.UseServiceValidator(ValidateNoContainerName)
 		default:
-			return nil, fmt.Errorf("Unknown validator: %s", k)
+			ok := false
+			if strings.HasPrefix(k, "No") {
+				var c string
+				c, ok = badConfig[k[2:]]
+				if ok {
+					validator.badConfig = append(validator.badConfig, c)
+				}
+			}
+			if !ok {
+				return nil, fmt.Errorf("Unknown validator: %s", k)
+			}
 		}
 	}
 	return validator, nil
@@ -163,6 +150,12 @@ func (cv *ComposeValidator) Validate(c *Compose) []error {
 				errs = append(errs, err)
 			}
 		}
+		for _, bad := range cv.badConfig {
+			_, ok := value[bad]
+			if ok {
+				errs = append(errs, fmt.Errorf("the %s config is not available", bad))
+			}
+		}
 		volumesRaw, ok := value["volumes"]
 		if !ok {
 			return nil
@@ -190,4 +183,22 @@ func (cv *ComposeValidator) Validate(c *Compose) []error {
 		return nil
 	})
 	return errs
+}
+
+func SnakeToCamel(txt string) string {
+	out := bytes.Buffer{}
+	up := true
+	for _, a := range txt {
+		if a == '_' {
+			up = true
+		} else {
+			if up {
+				out.WriteRune(unicode.ToUpper(a))
+				up = false
+			} else {
+				out.WriteRune(a)
+			}
+		}
+	}
+	return out.String()
 }

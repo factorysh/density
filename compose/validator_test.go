@@ -23,7 +23,7 @@ services:
   bob:
     build: "."
 `,
-			err: "Do not build",
+			err: "the build config is not available",
 		},
 		{
 			name: "with logging",
@@ -34,7 +34,7 @@ services:
     logging:
       driver: syslog
 `,
-			err: "The logging is",
+			err: "the logging config is not available",
 		},
 		{
 			name: "correct volume",
