@@ -13,9 +13,26 @@ def session():
     s.headers.update(
         {
             "Authorization": "Bearer %s"
-            % jwt.encode(dict(owner="alice"),
+            % jwt.encode(
+                dict(owner="alice", path="/tmp/density/wd/*/volumes/test/answer"),
                          os.getenv("AUTH_KEY"),
-                         algorithm="HS256"),
+                algorithm="HS256",
+            ),
+        }
+    )
+    return s
+
+
+def invalid_session():
+    s = requests.Session()
+    s.headers.update(
+        {
+            "Authorization": "Bearer %s"
+            % jwt.encode(
+                dict(owner="alice", path="/no"),
+                os.getenv("AUTH_KEY"),
+                algorithm="HS256",
+            ),
         }
     )
     return s
@@ -145,6 +162,48 @@ x-batch:
 
         with raises(docker.errors.NotFound):
             ct = cli.containers.get("%s_hello_1" % id)
+
+
+def test_volumes(session):
+    r = session.get("http://localhost:8042/api/tasks")
+    assert r.status_code == 200
+    r = session.post(
+        "http://localhost:8042/api/tasks",
+        files={
+            "docker-compose": """
+version: '3'
+services:
+    hello:
+        image: "busybox:latest"
+        command: "touch /test/answer"
+        volumes:
+            - "./test:/test"
+x-batch:
+    max_execution_time: 2s
+"""
+        },
+    )
+
+    time.sleep(1)
+
+    assert r.status_code == 201
+    resp = json.loads(r.text)
+    id = resp["id"]
+
+    time.sleep(2)
+
+    assert os.path.isfile("/tmp/density/wd/{}/volumes/test/answer".format(id))
+
+    r = session.get("http://localhost:8042/api/tasks/%s/volume/test/answer" % id)
+    assert r.status_code == 200
+    # empty file
+    assert r.text == ""
+
+    unauthorized_session = invalid_session()
+    r = unauthorized_session.get(
+        "http://localhost:8042/api/tasks/%s/volume/test/answer" % id
+    )
+    assert r.status_code == 401
 
 
 def test_status(session):
