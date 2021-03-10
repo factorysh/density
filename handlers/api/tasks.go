@@ -234,6 +234,8 @@ func (a *API) HandleGetVolumes(u *owner.Owner, w http.ResponseWriter, r *http.Re
 		return nil, err
 	}
 
+	w.Header().Del("content-type")
+
 	http.ServeFile(w, r, fullPath)
 
 	return nil, nil
