@@ -89,11 +89,18 @@ func (s *Scheduler) Load() error {
 		old := t.Status
 		// fresh status
 		var fresh _status.Status
+		var status _run.Status
+		var exit int
+		var err error
 
 		// fetch status
-		status, exit, err := t.Run.Status()
-		if err != nil {
-			return err
+		if t.Run != nil {
+			status, exit, err = t.Run.Status()
+			if err != nil {
+				return err
+			}
+		} else {
+			status = _run.Unkown
 		}
 
 		// map runner status to task status
