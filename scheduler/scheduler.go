@@ -190,6 +190,7 @@ func (s *Scheduler) execTask(chosen *_task.Task) {
 		cancelResources()
 		log.WithError(err).Error()
 		s.tasks.Put(chosen)
+		s.lock.Unlock()
 		return
 	}
 	chosen.Status = _status.Running
