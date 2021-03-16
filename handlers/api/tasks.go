@@ -74,12 +74,23 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 			return nil, err
 		}
 	default:
-
 		err := r.ParseMultipartForm(1 << 20)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return nil, err
 		}
+
+		var labels []task.Label
+		// TODO: handle more values here ?
+		rawLabels, ok := r.Form["labels"]
+		if ok && len(rawLabels) >= 1 {
+			err := json.Unmarshal([]byte(rawLabels[0]), &labels)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		fmt.Println(t.Labels)
 
 		file, _, err := r.FormFile("docker-compose")
 		if err != nil {
@@ -110,6 +121,10 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return nil, err
+		}
+
+		if len(labels) >= 1 {
+			t.Labels = labels
 		}
 	}
 	errs := a.validator.ValidateAction(t.Action)

@@ -63,6 +63,35 @@ x-batch:
     assert r.status_code == 201
 
 
+def test_labels(session):
+    r = session.get("http://localhost:8042/api/tasks")
+    assert r.status_code == 200
+    r = session.post(
+        "http://localhost:8042/api/tasks",
+        data={
+            "labels": json.dumps(
+                [
+                    {"key": "answer", "value": "42"},
+                    {"key": "pika", "value": "chu"},
+                ]
+            )
+        },
+        files={
+            "docker-compose": """
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "echo world"
+x-batch:
+  max_execution_time: 3s
+        """
+        },
+    )
+    assert r.status_code == 201
+    assert {"key": "pika", "value": "chu"} in r.json()["labels"]
+
+
 def test_json(session):
     task = {
         "cpu": 2,
