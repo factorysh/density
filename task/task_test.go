@@ -31,3 +31,50 @@ func TestJson(t *testing.T) {
 	action := task2.Action.(*DummyAction)
 	assert.Equal(t, "Action A", action.Name)
 }
+
+func TestValidateLabel(t *testing.T) {
+
+	tests := []struct {
+		name   string
+		label  string
+		expect bool
+	}{
+		{
+			name:   "valid",
+			label:  "valid",
+			expect: true,
+		},
+		{
+			name:   "valid with hyphen",
+			label:  "valid-with-hyphen",
+			expect: true,
+		},
+		{
+			name:   "valid with periods",
+			label:  "valid.with.123",
+			expect: true,
+		},
+		{
+			name:   "invalid with two consecutive periods",
+			label:  "invalid..",
+			expect: false,
+		},
+		{
+			name:   "invalid with unauthorized char",
+			label:  "invalid)",
+			expect: false,
+		},
+		{
+			name:   "invalid combo",
+			label:  "test-.",
+			expect: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expect, IsLabelValid(tt.label))
+		})
+	}
+
+}

@@ -74,11 +74,20 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 			return nil, err
 		}
 	default:
-
 		err := r.ParseMultipartForm(1 << 20)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return nil, err
+		}
+
+		var labels map[string]string
+		// TODO: handle more values here ?
+		rawLabels, ok := r.Form["labels"]
+		if ok && len(rawLabels) >= 1 {
+			err := json.Unmarshal([]byte(rawLabels[0]), &labels)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		file, _, err := r.FormFile("docker-compose")
@@ -111,8 +120,32 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 			w.WriteHeader(http.StatusInternalServerError)
 			return nil, err
 		}
+
+		if len(labels) >= 1 {
+			t.Labels = labels
+		}
 	}
-	errs := a.validator.ValidateAction(t.Action)
+
+	var errs []error
+	for key, value := range t.Labels {
+		if !task.IsLabelValid(key) {
+			errs = append(errs, fmt.Errorf("Key `%v` do not respect labels policy", key))
+		}
+		if !task.IsLabelValid(value) {
+			errs = append(errs, fmt.Errorf("Key `%v` do not respect labels policy", value))
+		}
+	}
+	if errs != nil && len(errs) > 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		errz := make([]string, len(errs))
+		for i := 0; i < len(errs); i++ {
+			errz[i] = errs[i].Error()
+		}
+		json.NewEncoder(w).Encode(errz)
+		return nil, fmt.Errorf("Labels errors %v", errs)
+	}
+
+	errs = a.validator.ValidateAction(t.Action)
 	if errs != nil && len(errs) > 0 {
 		fmt.Println("Validate errors", errs)
 		w.WriteHeader(400)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/factorysh/density/task/action"
@@ -43,6 +44,9 @@ func init() {
 
 }
 
+// IsLabelValid is a simple function used to check validity of both key and value pairs in labels
+var IsLabelValid = regexp.MustCompile(`^[a-z0-9]+([.-][a-z0-9]+)*$`).MatchString
+
 // Task something to do
 type Task struct {
 	Start           time.Time          `json:"start"`              // Start time
@@ -62,6 +66,7 @@ type Task struct {
 	Environments    map[string]string  `json:"environments,omitempty"`
 	resourceCancel  context.CancelFunc `json:"-"`
 	Run             _run.Run           `json:"run"`
+	Labels          map[string]string  `json:"labels"`
 }
 
 // Resp represent a task that can be send directly on the wire
@@ -79,6 +84,7 @@ type Resp struct {
 	Every           time.Duration     `json:"every"`              // Periodic execution. Exclusive with Cron
 	Cron            string            `json:"cron"`               // Cron definition. Exclusive with Every
 	Environments    map[string]string `json:"environments,omitempty"`
+	Labels          map[string]string `json:"labels"`
 }
 
 // ToTaskResp will Convert a Task to TaskResp
@@ -98,6 +104,7 @@ func (t *Task) ToTaskResp() Resp {
 		Every:           t.Every,
 		Cron:            t.Cron,
 		Environments:    t.Environments,
+		Labels:          t.Labels,
 	}
 
 }
@@ -146,6 +153,7 @@ type RawTask struct {
 	Cron            string                     `json:"cron"`               // Cron definition. Exclusive with Every
 	Environments    map[string]string          `json:"environments,omitempty"`
 	Run             map[string]json.RawMessage `json:"run"`
+	Labels          map[string]string          `json:"labels"`
 }
 
 func (t *Task) UnmarshalJSON(b []byte) error {
@@ -205,6 +213,7 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	t.Every = raw.Every
 	t.Cron = raw.Cron
 	t.Environments = raw.Environments
+	t.Labels = raw.Labels
 
 	return nil
 }
@@ -226,6 +235,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		Environments:    t.Environments,
 		Action:          make(map[string]json.RawMessage),
 		Run:             make(map[string]json.RawMessage),
+		Labels:          t.Labels,
 	}
 	if t.Action != nil {
 		rawAction, err := json.Marshal(t.Action)
