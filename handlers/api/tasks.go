@@ -90,8 +90,6 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 			}
 		}
 
-		fmt.Println(t.Labels)
-
 		file, _, err := r.FormFile("docker-compose")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -127,7 +125,24 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 			t.Labels = labels
 		}
 	}
-	errs := a.validator.ValidateAction(t.Action)
+
+	var errs []error
+	for _, label := range t.Labels {
+		if err := label.Validate(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if errs != nil && len(errs) > 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		errz := make([]string, len(errs))
+		for i := 0; i < len(errs); i++ {
+			errz[i] = errs[i].Error()
+		}
+		json.NewEncoder(w).Encode(errz)
+		return nil, fmt.Errorf("Label errors %v", errs)
+	}
+
+	errs = a.validator.ValidateAction(t.Action)
 	if errs != nil && len(errs) > 0 {
 		fmt.Println("Validate errors", errs)
 		w.WriteHeader(400)

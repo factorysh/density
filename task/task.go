@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/factorysh/density/task/action"
@@ -43,10 +44,26 @@ func init() {
 
 }
 
-// label provide a simple key value struct for tasks
+// Label provide a simple key value struct for tasks
 type Label struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+// Validate label values
+// see https://docs.docker.com/config/labels-custom-metadata/
+func (l *Label) Validate() error {
+	isValid := regexp.MustCompile(`^[a-z0-9]+([.-][a-z0-9]+)*$`).MatchString
+
+	if !isValid(l.Key) {
+		return fmt.Errorf("Label key `%v` do not respect labels format policy", l.Key)
+	}
+
+	if !isValid(l.Value) {
+		return fmt.Errorf("Label value `%v` do not respect labels format policy", l.Value)
+	}
+
+	return nil
 }
 
 // Task something to do
