@@ -44,27 +44,8 @@ func init() {
 
 }
 
-// Label provide a simple key value struct for tasks
-type Label struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-// Validate label values
-// see https://docs.docker.com/config/labels-custom-metadata/
-func (l *Label) Validate() error {
-	isValid := regexp.MustCompile(`^[a-z0-9]+([.-][a-z0-9]+)*$`).MatchString
-
-	if !isValid(l.Key) {
-		return fmt.Errorf("Label key `%v` do not respect labels format policy", l.Key)
-	}
-
-	if !isValid(l.Value) {
-		return fmt.Errorf("Label value `%v` do not respect labels format policy", l.Value)
-	}
-
-	return nil
-}
+// IsLabelValid is a simple function used to check validity of both key and value pairs in labels
+var IsLabelValid = regexp.MustCompile(`^[a-z0-9]+([.-][a-z0-9]+)*$`).MatchString
 
 // Task something to do
 type Task struct {
@@ -85,7 +66,7 @@ type Task struct {
 	Environments    map[string]string  `json:"environments,omitempty"`
 	resourceCancel  context.CancelFunc `json:"-"`
 	Run             _run.Run           `json:"run"`
-	Labels          []Label            `json:"labels"`
+	Labels          map[string]string  `json:"labels"`
 }
 
 // Resp represent a task that can be send directly on the wire
@@ -103,7 +84,7 @@ type Resp struct {
 	Every           time.Duration     `json:"every"`              // Periodic execution. Exclusive with Cron
 	Cron            string            `json:"cron"`               // Cron definition. Exclusive with Every
 	Environments    map[string]string `json:"environments,omitempty"`
-	Labels          []Label           `json:"labels"`
+	Labels          map[string]string `json:"labels"`
 }
 
 // ToTaskResp will Convert a Task to TaskResp
@@ -172,7 +153,7 @@ type RawTask struct {
 	Cron            string                     `json:"cron"`               // Cron definition. Exclusive with Every
 	Environments    map[string]string          `json:"environments,omitempty"`
 	Run             map[string]json.RawMessage `json:"run"`
-	Labels          []Label                    `json:"labels"`
+	Labels          map[string]string          `json:"labels"`
 }
 
 func (t *Task) UnmarshalJSON(b []byte) error {

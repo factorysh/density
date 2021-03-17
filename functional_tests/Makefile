@@ -1,6 +1,6 @@
 AUTH_KEY:=debug
 test: venv
-	AUTH_KEY=${AUTH_KEY} ./venv/bin/pytest -s .
+	AUTH_KEY=${AUTH_KEY} ./venv/bin/pytest -s . -k "test_labels"
 
 start:
 	docker network prune -f

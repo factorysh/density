@@ -80,7 +80,7 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 			return nil, err
 		}
 
-		var labels []task.Label
+		var labels map[string]string
 		// TODO: handle more values here ?
 		rawLabels, ok := r.Form["labels"]
 		if ok && len(rawLabels) >= 1 {
@@ -127,9 +127,12 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 	}
 
 	var errs []error
-	for _, label := range t.Labels {
-		if err := label.Validate(); err != nil {
-			errs = append(errs, err)
+	for key, value := range t.Labels {
+		if !task.IsLabelValid(key) {
+			errs = append(errs, fmt.Errorf("Key `%v` do not respect labels policy", key))
+		}
+		if !task.IsLabelValid(value) {
+			errs = append(errs, fmt.Errorf("Key `%v` do not respect labels policy", value))
 		}
 	}
 	if errs != nil && len(errs) > 0 {
@@ -139,7 +142,7 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 			errz[i] = errs[i].Error()
 		}
 		json.NewEncoder(w).Encode(errz)
-		return nil, fmt.Errorf("Label errors %v", errs)
+		return nil, fmt.Errorf("Labels errors %v", errs)
 	}
 
 	errs = a.validator.ValidateAction(t.Action)
