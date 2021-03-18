@@ -86,6 +86,7 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 		if ok && len(rawLabels) >= 1 {
 			err := json.Unmarshal([]byte(rawLabels[0]), &labels)
 			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
 				return nil, err
 			}
 		}
