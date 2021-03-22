@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -328,8 +329,25 @@ func (s *Scheduler) Cancel(id uuid.UUID) error {
 		task.Cancel()
 	}
 	task.Mtime = time.Now()
-	s.tasks.Put(task)
-	return nil
+	return s.tasks.Put(task)
+}
+
+// Delete a task
+func (s *Scheduler) Delete(id uuid.UUID) error {
+	task, err := s.tasks.Get(id)
+	if err != nil {
+		return err
+	}
+
+	if task == nil {
+		return fmt.Errorf("unknown id %s", id.String())
+	}
+
+	if task.Status == _status.Running && task.Run != nil {
+		task.Run.Down()
+	}
+
+	return s.tasks.Delete(id)
 }
 
 // Length returns the number of Task

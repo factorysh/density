@@ -213,7 +213,7 @@ func (a *API) HandleDeleteTasks(u *owner.Owner,
 		return nil, nil
 	}
 
-	go a.schd.Cancel(uuid)
+	go a.schd.Delete(uuid)
 	w.WriteHeader(http.StatusAccepted)
 
 	return nil, nil
