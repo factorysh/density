@@ -9,7 +9,7 @@ def session():
     s.headers.update(
         {
             "Authorization": "Bearer %s"
-            % jwt.encode(dict(owner="alice"), "s3cr3t", algorithm="HS256"),
+            % jwt.encode(dict(owner="alice"), "debug", algorithm="HS256"),
         }
     )
     return s
