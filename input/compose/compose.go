@@ -55,5 +55,9 @@ func TaskFromCompose(com *cmps.Compose) (*task.Task, error) {
 		t.Cron = cron
 	}
 
+	if t.Every != 0 && t.Cron != "" {
+		return nil, fmt.Errorf("cron and every options are mutually exclusive")
+	}
+
 	return t, nil
 }
