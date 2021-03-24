@@ -9,3 +9,4 @@ services:
       - "./output:/sitespeed.io/sitespeed-result/"
 x-batch:
   max_execution_time: 5m
+  every: 2m
