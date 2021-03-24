@@ -13,6 +13,7 @@ import (
 	"github.com/factorysh/density/task/status"
 	"github.com/google/uuid"
 	"github.com/robfig/cron"
+	log "github.com/sirupsen/logrus"
 )
 
 // ActionsRegistry register all Action implementation
@@ -289,10 +290,12 @@ func (t *Task) PrepareReschedule() {
 
 	if t.Cron != "" {
 		sched, err := Parser.Parse(t.Cron)
-		if err != nil {
-			fmt.Println("debug error cron format", err)
+		if err == nil {
+			t.Start = sched.Next(time.Now())
+		} else {
+			t.Status = status.Error
+			log.Error(fmt.Errorf("cron value %v for task %v is invalid", t.Cron, t.Id))
 		}
-		t.Start = sched.Next(time.Now())
 	}
 
 }
