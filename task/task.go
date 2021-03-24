@@ -12,6 +12,7 @@ import (
 	_run "github.com/factorysh/density/task/run"
 	"github.com/factorysh/density/task/status"
 	"github.com/google/uuid"
+	"github.com/robfig/cron"
 )
 
 // ActionsRegistry register all Action implementation
@@ -22,6 +23,8 @@ var RunRegistry map[string]func() _run.Run
 
 // UUID indentifier for tasks
 const UUID = "uuid"
+
+var Parser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 
 func init() {
 	if ActionsRegistry == nil {
@@ -200,6 +203,14 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 			}
 		}
 	}
+	// Ensure cron is valid
+	if t.Cron != "" {
+		_, err = Parser.Parse(t.Cron)
+		if err != nil {
+			return fmt.Errorf("error when parsing cron string: %v", err)
+		}
+
+	}
 	t.Start = raw.Start
 	t.MaxWaitTime = time.Duration(raw.MaxWaitTime)
 	t.MaxExectionTime = time.Duration(raw.MaxExectionTime)
@@ -214,6 +225,9 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	t.Cron = raw.Cron
 	t.Environments = raw.Environments
 	t.Labels = raw.Labels
+
+	fmt.Println(t.Cron)
+	fmt.Println(t.Every)
 
 	return nil
 }
@@ -254,6 +268,33 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		raw.Run[name] = rawRun
 	}
 	return json.Marshal(raw)
+}
+
+// HasCron return true if tasks has a cron or an every planified
+func (t *Task) HasCron() bool {
+	fmt.Println("debug cron", t.Every, t.Cron)
+	if t.Every > 0 || t.Cron != "" {
+		return true
+	}
+
+	return false
+}
+
+// PrepareRechedule is used to modify start date in the future in case of a configured cron or every
+// ! This does no check if cron or every is a valid value
+func (t *Task) PrepareReschedule() {
+	if t.Every > 0 {
+		t.Start = time.Now().Add(t.Every)
+	}
+
+	if t.Cron != "" {
+		sched, err := Parser.Parse(t.Cron)
+		if err != nil {
+			fmt.Println("debug error cron format", err)
+		}
+		t.Start = sched.Next(time.Now())
+	}
+
 }
 
 // NewTask init a new task

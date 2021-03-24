@@ -259,6 +259,10 @@ func (s *Scheduler) execTask(chosen *_task.Task) {
 			Action: task.Status.String(),
 			Id:     task.Id,
 		})
+		if task.HasCron() {
+			task.Status = _status.Waiting
+			task.PrepareReschedule()
+		}
 		s.tasks.Put(task)
 		s.somethingNewHappened.Ping() // a slot is now free, let's try to full it
 	}(ctx, chosen, run, cleanup)

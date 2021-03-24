@@ -37,5 +37,23 @@ func TaskFromCompose(com *cmps.Compose) (*task.Task, error) {
 		t.MaxExectionTime = mm
 	}
 
+	every, ok := cfg["every"].(string)
+	if ok {
+		ee, err := time.ParseDuration(every)
+		if err != nil {
+			return nil, err
+		}
+		t.Every = ee
+	}
+
+	cron, ok := cfg["cron"].(string)
+	if ok {
+		_, err := task.Parser.Parse(cron)
+		if err != nil {
+			return nil, err
+		}
+		t.Cron = cron
+	}
+
 	return t, nil
 }

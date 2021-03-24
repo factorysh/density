@@ -18,6 +18,7 @@ require (
 	github.com/mattn/go-zglob v0.0.3
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
+	github.com/robfig/cron v1.2.0
 	github.com/sirupsen/logrus v1.8.0
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
