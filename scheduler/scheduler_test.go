@@ -266,6 +266,7 @@ x-batch:
 	assert.NotNil(t, task)
 	assert.Equal(t, _status.Done, task.Status)
 
+	time.Sleep(time.Duration(time.Second))
 	// second one shoud be running
 	task, err = s.tasks.Get(uuids[1])
 	assert.NoError(t, err)
