@@ -227,9 +227,6 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	t.Environments = raw.Environments
 	t.Labels = raw.Labels
 
-	fmt.Println(t.Cron)
-	fmt.Println(t.Every)
-
 	return nil
 }
 
@@ -273,7 +270,6 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 
 // HasCron return true if tasks has a cron or an every planified
 func (t *Task) HasCron() bool {
-	fmt.Println("debug cron", t.Every, t.Cron)
 	if t.Every > 0 || t.Cron != "" {
 		return true
 	}
