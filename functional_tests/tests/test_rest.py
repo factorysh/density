@@ -255,3 +255,40 @@ x-batch:
     r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
     assert r.json()["status"] == "Running"
+
+
+def test_cron(session):
+    r = session.get("http://localhost:8042/api/tasks")
+    assert r.status_code == 200
+
+    r = session.post(
+        "http://localhost:8042/api/tasks",
+        files={
+            "docker-compose": """
+version: '3'
+services:
+    hello:
+        image: "busybox:latest"
+        command: "sh -c 'sleep 2 && echo world'"
+x-batch:
+    max_execution_time: 3s
+    every: 1m
+"""
+        },
+    )
+
+    assert r.status_code == 201
+    resp = json.loads(r.text)
+    id = resp["id"]
+
+    r = session.get("http://localhost:8042/api/task/%s" % id)
+    assert r.status_code == 200
+    assert r.json()["status"] == "Waiting"
+    time.sleep(2)
+    r = session.get("http://localhost:8042/api/task/%s" % id)
+    assert r.status_code == 200
+    assert r.json()["status"] == "Running"
+    time.sleep(3)
+    r = session.get("http://localhost:8042/api/task/%s" % id)
+    assert r.status_code == 200
+    assert r.json()["status"] == "Waiting"
