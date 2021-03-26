@@ -14,19 +14,20 @@ import (
 	_task "github.com/factorysh/density/task"
 	_run "github.com/factorysh/density/task/run"
 	_status "github.com/factorysh/density/task/status"
+	"github.com/factorysh/density/todo"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type Scheduler struct {
-	resources *Resources
-	tasks     *JSONStore
-	lock      sync.RWMutex
-	events    chan interface{}
-	stop      chan bool
-	runner    Runner
-	Pubsub    *pubsub.PubSub
-	dataDir   string
+	resources            *Resources
+	tasks                *JSONStore
+	lock                 sync.RWMutex
+	somethingNewHappened *todo.Todo
+	stop                 chan bool
+	runner               Runner
+	Pubsub               *pubsub.PubSub
+	dataDir              string
 }
 
 type Runner interface {
@@ -36,12 +37,12 @@ type Runner interface {
 
 func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 	return &Scheduler{
-		resources: resources,
-		tasks:     &JSONStore{store},
-		events:    make(chan interface{}),
-		stop:      make(chan bool),
-		runner:    runner,
-		Pubsub:    pubsub.NewPubSub(),
+		resources:            resources,
+		tasks:                &JSONStore{store},
+		somethingNewHappened: todo.New(),
+		stop:                 make(chan bool),
+		runner:               runner,
+		Pubsub:               pubsub.NewPubSub(),
 	}
 }
 
@@ -70,7 +71,7 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 	task.Cancel = func() {
 		task.Status = _status.Canceled
 	}
-	s.events <- new(interface{})
+	s.somethingNewHappened.Ping()
 	s.Pubsub.Publish(pubsub.Event{
 		Action: "added",
 		Id:     id,
@@ -153,7 +154,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 	// FIXME, find all detached running tasks in s.tasks
 	for {
 		select {
-		case <-s.events:
+		case <-s.somethingNewHappened.Wait():
 		case <-s.stop:
 			return
 		case <-ctx.Done():
@@ -174,10 +175,14 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}
 			l.WithField("sleep", sleep).Info("Waiting")
 			time.AfterFunc(sleep, func() {
-				s.events <- new(interface{})
+				s.somethingNewHappened.Ping()
 			})
 		} else { // Something todo
 			s.execTask(todos[0])
+		}
+		err := s.somethingNewHappened.Done()
+		if err != nil {
+			panic(err)
 		}
 	}
 }
@@ -228,7 +233,7 @@ func (s *Scheduler) execTask(chosen *_task.Task) {
 			Id:     task.Id,
 		})
 		s.tasks.Put(task)
-		s.events <- new(interface{}) // a slot is now free, let's try to full it
+		s.somethingNewHappened.Ping() // a slot is now free, let's try to full it
 	}(ctx, chosen, run, cleanup)
 }
 
