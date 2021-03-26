@@ -257,11 +257,13 @@ x-batch:
 	// first one should be finished
 	task, err := s.tasks.Get(uuids[0])
 	assert.NoError(t, err)
+	assert.NotNil(t, task)
 	assert.Equal(t, _status.Done, task.Status)
 
 	// second one shoud be running
 	task, err = s.tasks.Get(uuids[1])
 	assert.NoError(t, err)
+	assert.NotNil(t, task)
 	assert.Equal(t, _status.Running, task.Status)
 
 }
