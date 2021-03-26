@@ -18,6 +18,7 @@ func TestTodo(t *testing.T) {
 				todo.Done()
 				wg.Done()
 			case <-time.After(10 * time.Second):
+				panic("Timeout")
 			}
 		}
 	}()

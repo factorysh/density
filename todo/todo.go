@@ -1,6 +1,9 @@
 package todo
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
 
 type Todo struct {
 	newMsg bool
@@ -21,14 +24,21 @@ func (t *Todo) Ping() {
 	defer t.lock.Unlock()
 	if !t.newMsg {
 		t.wait <- new(interface{})
+		t.newMsg = true
 	}
-	t.newMsg = true
 }
 
-func (t *Todo) Done() {
+func (t *Todo) Done() error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.newMsg = false
+	if !t.newMsg {
+		return errors.New("double release")
+	}
+	if len(t.wait) > 0 { // flushing the chan
+		<-t.wait
+	}
+	return nil
 }
 
 func (t *Todo) Wait() chan interface{} {
