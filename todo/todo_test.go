@@ -17,8 +17,7 @@ func TestTodo(t *testing.T) {
 			select {
 			case <-todo.Wait():
 				time.Sleep(10 * time.Millisecond)
-				err := todo.Done()
-				assert.NoError(t, err)
+				todo.Done()
 				wg.Done()
 			case <-time.After(10 * time.Second):
 				panic("Timeout")
@@ -37,17 +36,11 @@ func TestTodo(t *testing.T) {
 	wg.Wait()
 }
 
-func TestDone(t *testing.T) {
-	todo := New()
-	err := todo.Done()
-	assert.Error(t, err)
-}
-
 func TestFlush(t *testing.T) {
 	todo := New()
 	todo.Ping()
 	assert.Len(t, todo.wait, 1)
-	err := todo.Done()
-	assert.NoError(t, err)
+	todo.Done()
 	assert.Len(t, todo.wait, 0)
+	todo.Done() // nothing happened, double Done is ok
 }

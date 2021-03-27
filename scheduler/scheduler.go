@@ -157,7 +157,8 @@ func (s *Scheduler) Load() error {
 		}
 	}
 
-	s.somethingNewHappened.Ping()
+	// FIXME if Start() was already call, something bad will happen
+	s.oneLoop()
 	return nil
 }
 
@@ -185,29 +186,30 @@ func (s *Scheduler) Start(ctx context.Context) {
 			}
 			return
 		}
-		chrono := time.Now()
-		l := log.WithField("tasks", s.tasks.Length())
-		todos := s.readyToGo()
-		l = l.WithField("todos", len(todos))
-		if len(todos) == 0 { // nothing is ready  just wait
-			now := time.Now()
-			n := s.next()
-			if n != nil {
-				sleep := now.Sub(n.Start)
-				l.WithField("task", n.Id).WithField("sleep", sleep).Info("Waiting")
-				time.AfterFunc(sleep, func() {
-					s.somethingNewHappened.Ping()
-				})
-			}
-		} else { // Something todo
-			s.execTask(todos[0])
-		}
-		err := s.somethingNewHappened.Done()
-		l.WithField("chrono", time.Since(chrono)).Debug("Main loop iteration")
-		if err != nil {
-			panic(err)
-		}
+		s.oneLoop()
 	}
+}
+
+func (s *Scheduler) oneLoop() {
+	chrono := time.Now()
+	l := log.WithField("tasks", s.tasks.Length())
+	todos := s.readyToGo()
+	l = l.WithField("todos", len(todos))
+	if len(todos) == 0 { // nothing is ready  just wait
+		now := time.Now()
+		n := s.next()
+		if n != nil {
+			sleep := now.Sub(n.Start)
+			l.WithField("task", n.Id).WithField("sleep", sleep).Info("Waiting")
+			time.AfterFunc(sleep, func() {
+				s.somethingNewHappened.Ping()
+			})
+		}
+	} else { // Something todo
+		s.execTask(todos[0])
+	}
+	s.somethingNewHappened.Done()
+	l.WithField("chrono", time.Since(chrono)).Debug("Main loop iteration")
 }
 
 // Exec chosen task
