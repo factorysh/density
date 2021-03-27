@@ -135,8 +135,11 @@ func (s *Scheduler) Load() error {
 			t.Status = fresh
 			update = append(update, t)
 		}
-		return err
+		return nil
 	})
+	if err != nil {
+		return err
+	}
 
 	for _, t := range garbage {
 		err := s.tasks.Delete(t.Id)
