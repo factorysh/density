@@ -28,6 +28,7 @@ type Scheduler struct {
 	runner               Runner
 	Pubsub               *pubsub.PubSub
 	dataDir              string
+	stopping             *sync.WaitGroup
 }
 
 type Runner interface {
@@ -43,6 +44,7 @@ func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 		stop:                 make(chan bool),
 		runner:               runner,
 		Pubsub:               pubsub.NewPubSub(),
+		stopping:             &sync.WaitGroup{},
 	}
 }
 
@@ -151,6 +153,7 @@ func (s *Scheduler) Load() error {
 
 // Start is the main loop
 func (s *Scheduler) Start(ctx context.Context) {
+	s.stopping.Add(1)
 	// FIXME, find all detached running tasks in s.tasks
 	log.Info("Starting main loop")
 	defer log.Info("Ending main loop")
@@ -159,12 +162,14 @@ func (s *Scheduler) Start(ctx context.Context) {
 		case <-s.somethingNewHappened.Wait():
 		case <-s.stop:
 			err := s.tasks.store.Sync()
+			s.stopping.Done()
 			if err != nil {
 				log.WithError(err).Error("Stop and sync")
 			}
 			return
 		case <-ctx.Done():
 			err := s.tasks.store.Sync()
+			s.stopping.Done()
 			if err != nil {
 				log.WithError(err).Error("Context.Done and sync")
 			}
@@ -390,4 +395,8 @@ func (s *Scheduler) Flush(age time.Duration) int {
 // GetDataDir will return data dir for current runner
 func (s *Scheduler) GetDataDir() string {
 	return s.runner.GetHome()
+}
+
+func (s *Scheduler) WaitStop() {
+	s.stopping.Wait()
 }
