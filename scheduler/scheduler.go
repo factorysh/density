@@ -157,7 +157,8 @@ func (s *Scheduler) Load() error {
 		}
 	}
 
-	return err
+	s.somethingNewHappened.Ping()
+	return nil
 }
 
 // Start is the main loop
