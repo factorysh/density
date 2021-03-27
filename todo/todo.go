@@ -25,12 +25,12 @@ func New() *Todo {
 func (t *Todo) Ping() bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
-	if !t.newMsg {
-		t.wait <- new(interface{})
-		t.newMsg = true
-		return true
+	if t.newMsg {
+		return false
 	}
-	return false
+	t.wait <- new(interface{})
+	t.newMsg = true
+	return true
 }
 
 // Done tell that you finished your todo list
