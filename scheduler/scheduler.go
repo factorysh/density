@@ -121,8 +121,12 @@ func (s *Scheduler) Load() error {
 			} else {
 				fresh = _status.Done
 			}
+		case _run.Unkown:
+			// FIXME
+			update = append(update, t)
 		default:
 			// gc the ones not found
+			log.WithField("status", status).Info("Garbage")
 			garbage = append(garbage, t)
 		}
 
