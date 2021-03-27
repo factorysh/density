@@ -192,17 +192,13 @@ func (s *Scheduler) Start(ctx context.Context) {
 		if len(todos) == 0 { // nothing is ready  just wait
 			now := time.Now()
 			n := s.next()
-			var sleep time.Duration
-			if n == nil {
-				sleep = 1 * time.Second
-			} else {
-				sleep = now.Sub(n.Start)
-				l = l.WithField("task", n.Id)
+			if n != nil {
+				sleep := now.Sub(n.Start)
+				l.WithField("task", n.Id).WithField("sleep", sleep).Info("Waiting")
+				time.AfterFunc(sleep, func() {
+					s.somethingNewHappened.Ping()
+				})
 			}
-			l.WithField("sleep", sleep).Info("Waiting")
-			time.AfterFunc(sleep, func() {
-				s.somethingNewHappened.Ping()
-			})
 		} else { // Something todo
 			s.execTask(todos[0])
 		}
