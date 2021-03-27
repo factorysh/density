@@ -1,7 +1,6 @@
 package todo
 
 import (
-	"errors"
 	"sync"
 )
 
@@ -34,17 +33,16 @@ func (t *Todo) Ping() bool {
 }
 
 // Done tell that you finished your todo list
-func (t *Todo) Done() error {
+func (t *Todo) Done() {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	if !t.newMsg {
-		return errors.New("double release")
+		return
 	}
 	t.newMsg = false
 	if len(t.wait) > 0 { // flushing the chan
 		<-t.wait
 	}
-	return nil
 }
 
 // Wait for the next ping
