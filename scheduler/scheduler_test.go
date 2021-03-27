@@ -270,7 +270,8 @@ x-batch:
 	task, err = s.tasks.Get(uuids[1])
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
-	assert.Equal(t, _status.Running, task.Status)
+	assert.Equal(t, _status.Running, task.Status,
+		fmt.Sprintf("task.Status should be Running, not %s", task.Status.String()))
 
 }
 
