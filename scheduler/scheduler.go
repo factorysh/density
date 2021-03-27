@@ -152,12 +152,22 @@ func (s *Scheduler) Load() error {
 // Start is the main loop
 func (s *Scheduler) Start(ctx context.Context) {
 	// FIXME, find all detached running tasks in s.tasks
+	log.Info("Starting main loop")
+	defer log.Info("Ending main loop")
 	for {
 		select {
 		case <-s.somethingNewHappened.Wait():
 		case <-s.stop:
+			err := s.tasks.store.Sync()
+			if err != nil {
+				log.WithError(err).Error("Stop and sync")
+			}
 			return
 		case <-ctx.Done():
+			err := s.tasks.store.Sync()
+			if err != nil {
+				log.WithError(err).Error("Context.Done and sync")
+			}
 			return
 		}
 		chrono := time.Now()

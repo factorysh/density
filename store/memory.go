@@ -61,6 +61,11 @@ func (m *MemoryStore) Length() int {
 	return len(m.kv)
 }
 
+func (m *MemoryStore) Sync() error {
+	// LOL everything is volatil
+	return nil
+}
+
 func (m *MemoryStore) ForEach(fn func(k, v []byte) error) error {
 	m.lock.RLock()
 	defer m.lock.RUnlock()

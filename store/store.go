@@ -6,6 +6,7 @@ type Store interface {
 	Put([]byte, []byte) error
 	Delete([]byte) error
 	Length() int
+	Sync() error
 	ForEach(func(k, v []byte) error) error
 	DeleteWithClause(fn func(k, v []byte) bool) error
 }

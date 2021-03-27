@@ -106,6 +106,10 @@ func (bs *BoltStore) Length() int {
 	return l
 }
 
+func (bs *BoltStore) Sync() error {
+	return bs.Db.Sync()
+}
+
 func (bs *BoltStore) ForEach(fn func(k, v []byte) error) error {
 	return bs.Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(DefaultBucket)
