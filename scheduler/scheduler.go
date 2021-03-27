@@ -160,6 +160,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		}
+		chrono := time.Now()
 		l := log.WithField("tasks", s.tasks.Length())
 		todos := s.readyToGo()
 		l = l.WithField("todos", len(todos))
@@ -181,6 +182,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			s.execTask(todos[0])
 		}
 		err := s.somethingNewHappened.Done()
+		l.WithField("chrono", time.Since(chrono)).Debug("Main loop iteration")
 		if err != nil {
 			panic(err)
 		}
