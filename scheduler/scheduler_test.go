@@ -247,8 +247,8 @@ x-batch:
 	}
 
 	// stop the scheduler, like a restart
-	s.stop <- true
-	time.Sleep(time.Duration(time.Second))
+	cancel()
+	s.WaitStop()
 
 	// on restart, load is called to refresh state
 	err = s.Load()
