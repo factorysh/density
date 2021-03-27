@@ -142,6 +142,7 @@ func (s *Scheduler) Load() error {
 	}
 
 	for _, t := range garbage {
+		log.WithField("id", t.Id).Info("removed while store load")
 		err := s.tasks.Delete(t.Id)
 		if err != nil {
 			return err
@@ -149,6 +150,7 @@ func (s *Scheduler) Load() error {
 	}
 
 	for _, t := range update {
+		log.WithField("id", t.Id).Info("Back in main loop while store load")
 		err := s.tasks.Put(t)
 		if err != nil {
 			return err
