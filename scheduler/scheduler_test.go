@@ -250,9 +250,15 @@ x-batch:
 	cancel()
 	s.WaitStop()
 
+	s = New(NewResources(4, 16*1024), runner.New(dir, nil), store)
 	// on restart, load is called to refresh state
 	err = s.Load()
 	assert.NoError(t, err)
+	assert.Equal(t, 2, s.Length())
+
+	ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+	go s.Start(ctx)
 
 	// first one should be finished
 	task, err := s.tasks.Get(uuids[0])
