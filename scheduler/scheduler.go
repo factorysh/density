@@ -169,22 +169,22 @@ func (s *Scheduler) Start(ctx context.Context) {
 	log.Info("Starting main loop")
 	defer log.Info("Ending main loop")
 	for {
-		select {
-		case <-s.somethingNewHappened.Wait():
+		select { // waiting for a trigger
 		case <-s.stop:
 			err := s.tasks.store.Sync()
 			s.stopping.Done()
 			if err != nil {
 				log.WithError(err).Error("Stop and sync")
 			}
-			return
+			return // stop the loop
 		case <-ctx.Done():
 			err := s.tasks.store.Sync()
 			s.stopping.Done()
 			if err != nil {
 				log.WithError(err).Error("Context.Done and sync")
 			}
-			return
+			return // stop the loop
+		case <-s.somethingNewHappened.Wait():
 		}
 		s.oneLoop()
 	}
@@ -192,24 +192,26 @@ func (s *Scheduler) Start(ctx context.Context) {
 
 func (s *Scheduler) oneLoop() {
 	chrono := time.Now()
-	l := log.WithField("tasks", s.tasks.Length())
 	todos := s.readyToGo()
-	l = l.WithField("todos", len(todos))
-	if len(todos) == 0 { // nothing is ready  just wait
-		now := time.Now()
-		n := s.next()
-		if n != nil {
-			sleep := now.Sub(n.Start)
-			l.WithField("task", n.Id).WithField("sleep", sleep).Info("Waiting")
-			time.AfterFunc(sleep, func() {
-				s.somethingNewHappened.Ping()
-			})
-		}
-	} else { // Something todo
+	l := log.WithField("tasks", s.tasks.Length()).WithField("todos", len(todos))
+	defer l.WithField("chrono", time.Since(chrono)).Debug("Main loop iteration")
+	if len(todos) > 0 { // Something todo
 		s.execTask(todos[0])
+		s.somethingNewHappened.Done()
+		s.somethingNewHappened.Ping() // is there any // tasks waiting?
+		return
 	}
+	// nothing is ready just wait
+	now := time.Now()
+	n := s.next()
+	if n != nil {
+		sleep := now.Sub(n.Start)
+		l.WithField("task", n.Id).WithField("sleep", sleep).Info("Waiting")
+		time.AfterFunc(sleep, func() {
+			s.somethingNewHappened.Ping()
+		})
+	} // else no future
 	s.somethingNewHappened.Done()
-	l.WithField("chrono", time.Since(chrono)).Debug("Main loop iteration")
 }
 
 // Exec chosen task
