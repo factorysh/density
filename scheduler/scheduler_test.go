@@ -202,12 +202,27 @@ services:
 x-batch:
   max_execution_time: 5s
 `
+	withCron := `
+version: '3'
+services:
+  hello:
+    image: "busybox:latest"
+    command: "sh -c 'sleep %d && echo world'"
+x-batch:
+  max_execution_time: 5s
+  every: 1m
+`
+
 	c1 := compose.NewCompose()
 	err := yaml.Unmarshal([]byte(fmt.Sprintf(composeTemplate, 0)), &c1)
 	assert.NoError(t, err)
 
 	c2 := compose.NewCompose()
 	err = yaml.Unmarshal([]byte(fmt.Sprintf(composeTemplate, 5)), &c2)
+	assert.NoError(t, err)
+
+	c3 := compose.NewCompose()
+	err = yaml.Unmarshal([]byte(fmt.Sprintf(withCron, 0)), &c3)
 	assert.NoError(t, err)
 
 	// setting up the scheduler
@@ -222,20 +237,27 @@ x-batch:
 	go s.Start(ctx)
 
 	// init tasks
-	tasks := [2]_task.Task{
+	tasks := [3]_task.Task{
 		{
 			Start:           time.Now(),
 			CPU:             2,
 			RAM:             256,
-			MaxExectionTime: 1 * time.Second,
+			MaxExectionTime: 3 * time.Second,
 			Action:          c1,
 		},
 		{
 			Start:           time.Now(),
 			CPU:             2,
 			RAM:             256,
-			MaxExectionTime: 1 * time.Second,
+			MaxExectionTime: 3 * time.Second,
 			Action:          c2,
+		},
+		{
+			Start:           time.Now(),
+			CPU:             2,
+			RAM:             256,
+			MaxExectionTime: 3 * time.Second,
+			Action:          c3,
 		},
 	}
 
@@ -254,7 +276,7 @@ x-batch:
 	// on restart, load is called to refresh state
 	err = s.Load()
 	assert.NoError(t, err)
-	assert.Equal(t, 2, s.Length())
+	assert.Equal(t, 3, s.Length())
 
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
@@ -266,13 +288,19 @@ x-batch:
 	assert.NotNil(t, task)
 	assert.Equal(t, _status.Done, task.Status)
 
-	time.Sleep(time.Duration(time.Second))
+	time.Sleep(time.Duration(1 * time.Second))
 	// second one shoud be running
 	task, err = s.tasks.Get(uuids[1])
 	assert.NoError(t, err)
 	assert.NotNil(t, task)
 	assert.Equal(t, _status.Running, task.Status,
 		fmt.Sprintf("task.Status should be Running, not %s", task.Status.String()))
+
+	task, err = s.tasks.Get(uuids[2])
+	assert.NoError(t, err)
+	assert.NotNil(t, task)
+	assert.Equal(t, _status.Waiting, task.Status,
+		fmt.Sprintf("task.Status should be Waiting, not %s", task.Status.String()))
 
 }
 

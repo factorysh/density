@@ -152,7 +152,7 @@ x-batch:
         tries = 5
         for tick in range(0, tries):
             try:
-                time.sleep(0.5)
+                time.sleep(1)
                 ct = cli.containers.get("%s_hello_1" % id)
                 break
             except Exception as e:
@@ -315,7 +315,7 @@ x-batch:
     resp = json.loads(r.text)
     id = resp["id"]
 
-    time.sleep(2)
+    time.sleep(3)
     r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
     assert r.json()["status"] == "Running"
