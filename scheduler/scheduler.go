@@ -134,6 +134,10 @@ func (s *Scheduler) Load() error {
 		if old != fresh {
 			t.Status = fresh
 			update = append(update, t)
+		} else if t.HasCron() && t.Status != _status.Running {
+			t.Status = _status.Waiting
+			t.PrepareReschedule()
+			update = append(update, t)
 		}
 		return nil
 	})
