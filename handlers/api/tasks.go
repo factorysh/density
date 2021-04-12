@@ -44,14 +44,14 @@ func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
 	if u.Admin {
 		if filter {
 			//  request with a filter
-			ts = a.schd.Filter(o)
+			ts = a.schd.Filter(o, nil)
 		} else {
 			// request all
 			ts = a.schd.List()
 		}
 	} else {
 		// used context information to get current user name
-		ts = a.schd.Filter(u.Name)
+		ts = a.schd.Filter(u.Name, nil)
 	}
 
 	return ts, nil

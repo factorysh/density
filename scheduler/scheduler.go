@@ -285,16 +285,23 @@ func (s *Scheduler) List() []*_task.Task {
 }
 
 // Filter tasks for a specific owner
-func (s *Scheduler) Filter(owner string) []*_task.Task {
+func (s *Scheduler) Filter(owner string, labels map[string]string) []*_task.Task {
 	tasks := make([]*_task.Task, 0)
 
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
 	s.tasks.ForEach(func(t *_task.Task) error {
-		if t.Owner == owner {
-			tasks = append(tasks, t)
+		if owner != "" && t.Owner != owner {
+			return nil
 		}
+		for key, value := range labels {
+			taskValue, found := t.Labels[key]
+			if !found || taskValue != value {
+				return nil
+			}
+		}
+		tasks = append(tasks, t)
 		return nil
 	})
 

@@ -60,6 +60,9 @@ func TestScheduler(t *testing.T) {
 		Owner:           "test",
 		Start:           time.Now(),
 		MaxExectionTime: 30 * time.Second,
+		Labels: map[string]string{
+			"key": "value",
+		},
 		Action: &_task.DummyAction{
 			Name: "Action A",
 			Wait: 10,
@@ -72,12 +75,17 @@ func TestScheduler(t *testing.T) {
 	assert.NotEqual(t, uuid.Nil, id)
 	list := s.List()
 	assert.Len(t, list, 1)
-	filtered := s.Filter("test")
+	filtered := s.Filter("test", nil)
 	assert.Len(t, filtered, 1)
 	wait.Wait()
 	assert.Len(t, s.readyToGo(), 0)
-	filtered = s.Filter("test")
+	filtered = s.Filter("test", nil)
 	assert.Len(t, filtered, 1)
+	filtered = s.Filter("test", map[string]string{
+		"key": "value",
+	})
+	assert.Len(t, filtered, 1)
+
 	assert.Equal(t, _status.Done, filtered[0].Status)
 
 	// Second part
