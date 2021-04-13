@@ -87,6 +87,12 @@ x-batch:
     )
     assert r.status_code == 201
     assert r.json()["labels"]["pika"] == "chu"
+    r = session.get("http://localhost:8042/api/tasks?pika=chu")
+    assert r.status_code == 200
+    assert len(r.json()) == 1
+    r = session.get("http://localhost:8042/api/tasks?nop=nop")
+    assert r.status_code == 200
+    assert len(r.json()) == 0
 
 
 def test_json(session):
