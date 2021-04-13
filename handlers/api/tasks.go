@@ -30,6 +30,7 @@ const MAXFORMMEM = 1024
 // HandleGetTasks handles a get on /schedules endpoint
 func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
 	r *http.Request) (interface{}, error) {
+	labels := make(map[string]string)
 	var ts []*task.Task
 	vars := mux.Vars(r)
 	o, filter := vars[owner.OWNER]
@@ -40,18 +41,27 @@ func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
 		return nil, nil
 	}
 
+	for key, values := range r.URL.Query() {
+		if len(values) > 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			return nil, fmt.Errorf("http parameter %s is used multiple times", key)
+		}
+
+		labels[key] = values[0]
+	}
+
 	// if user is an admin
 	if u.Admin {
-		if filter {
-			//  request with a filter
-			ts = a.schd.Filter(o, nil)
+		if filter || len(labels) > 1 {
+			// request with a filter
+			ts = a.schd.Filter(o, labels)
 		} else {
 			// request all
 			ts = a.schd.List()
 		}
 	} else {
 		// used context information to get current user name
-		ts = a.schd.Filter(u.Name, nil)
+		ts = a.schd.Filter(u.Name, labels)
 	}
 
 	return ts, nil
