@@ -209,7 +209,7 @@ func (s *Scheduler) oneLoop() {
 	now := time.Now()
 	n := s.next()
 	if n != nil {
-		sleep := now.Sub(n.Start)
+		sleep := n.Start.Sub(now)
 		l.WithField("task", n.Id).WithField("sleep", sleep).Info("Waiting")
 		time.AfterFunc(sleep, func() {
 			s.somethingNewHappened.Ping()
