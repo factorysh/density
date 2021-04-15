@@ -238,6 +238,7 @@ func (s *Scheduler) execTask(chosen *_task.Task) {
 		return
 	}
 	chosen.Status = _status.Running
+	chosen.Start = time.Now()
 	chosen.Run = run
 	s.tasks.Put(chosen)
 
