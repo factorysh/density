@@ -32,6 +32,10 @@ type DummyRun struct {
 	da *DummyAction
 }
 
+func (r *DummyRun) Data() run.Data {
+	return run.Data{}
+}
+
 func (r *DummyRun) ID() (string, error) {
 	return "some-id", nil
 }

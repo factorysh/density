@@ -88,6 +88,7 @@ type Resp struct {
 	Every           time.Duration     `json:"every"`              // Periodic execution. Exclusive with Cron
 	Cron            string            `json:"cron"`               // Cron definition. Exclusive with Every
 	Environments    map[string]string `json:"environments,omitempty"`
+	Run             _run.Data         `json:"run"`
 	Labels          map[string]string `json:"labels"`
 }
 
@@ -108,6 +109,7 @@ func (t *Task) ToTaskResp() Resp {
 		Every:           t.Every,
 		Cron:            t.Cron,
 		Environments:    t.Environments,
+		Run:             t.Run.Data(),
 		Labels:          t.Labels,
 	}
 

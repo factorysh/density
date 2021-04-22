@@ -11,6 +11,7 @@ import (
 	"path"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -199,6 +200,7 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (_r
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
+	start := time.Now()
 	cmd := exec.Command("docker-compose", "up", "--remove-orphans", "--detach")
 	cmd.Dir = workingDirectory
 	cmd.Stdout = &stdout
@@ -241,7 +243,8 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (_r
 	}
 
 	return &DockerRun{
-		Path: workingDirectory,
-		Id:   containers[0].ID,
+		Path:  workingDirectory,
+		Id:    containers[0].ID,
+		Start: start,
 	}, err
 }
