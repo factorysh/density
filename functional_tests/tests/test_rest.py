@@ -291,6 +291,7 @@ x-batch:
     r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
     assert r.json()["status"] == "Running"
+    assert r.json()["run"]["runner"] == "compose"
     time.sleep(3)
     r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200

@@ -32,6 +32,8 @@ func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
 	r *http.Request) (interface{}, error) {
 	labels := make(map[string]string)
 	var ts []*task.Task
+	// toSend array contains task with translated to task.Resp, removing private task fields
+	toSend := []task.Resp{}
 	vars := mux.Vars(r)
 	o, filter := vars[owner.OWNER]
 
@@ -64,7 +66,11 @@ func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
 		ts = a.schd.Filter(u.Name, labels)
 	}
 
-	return ts, nil
+	for _, t := range ts {
+		toSend = append(toSend, t.ToTaskResp())
+	}
+
+	return toSend, nil
 }
 
 // HandlePostTasks handles a post on /tasks endpoint

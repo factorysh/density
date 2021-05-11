@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -18,8 +19,23 @@ func init() {
 
 // DockerRun implements task.Run
 type DockerRun struct {
-	Path string `json:"path"`
-	Id   string `json:"id"`
+	Path     string    `json:"path"`
+	Id       string    `json:"id"`
+	Start    time.Time `json:"start"`
+	Finish   time.Time `json:"down"`
+	ExitCode int       `json:"exit_code"`
+	Running  bool      `json:"running"`
+}
+
+// Data returns all the data that should be exposed to the outside world
+func (d *DockerRun) Data() _run.Data {
+	return _run.Data{
+		Start:    d.Start,
+		Finish:   d.Finish,
+		Runner:   d.RegisteredName(),
+		ExitCode: d.ExitCode,
+		Running:  d.Running,
+	}
 }
 
 func (d *DockerRun) RegisteredName() string {
@@ -93,6 +109,7 @@ func (d *DockerRun) Down() error {
 	err := cmd.Run()
 	fmt.Println(stdout.String())
 	fmt.Println(stderr.String())
+	d.Running = false
 	return err
 }
 
@@ -123,6 +140,8 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 			}
 		}
 	}
+	d.Running = false
+	d.Finish = time.Now()
 	if status != 0 {
 		// FIXME `docker-compose down`
 		err = cli.ContainerKill(context.TODO(), d.Id, "KILL")
@@ -141,5 +160,6 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 			status = _status.Done
 		}
 	}
+	d.ExitCode = inspect.State.ExitCode
 	return status, nil
 }
