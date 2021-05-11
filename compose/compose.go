@@ -243,8 +243,9 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (_r
 	}
 
 	return &DockerRun{
-		Path:  workingDirectory,
-		Id:    containers[0].ID,
-		Start: start,
+		Path:    workingDirectory,
+		Id:      containers[0].ID,
+		Start:   start,
+		Running: true,
 	}, err
 }

@@ -13,6 +13,7 @@ type Data struct {
 	Finish   time.Time `json:"finish"`
 	ExitCode int       `json:"exit_code"`
 	Runner   string    `json:"runner"`
+	Running  bool      `json:"running"`
 }
 
 type Run interface {

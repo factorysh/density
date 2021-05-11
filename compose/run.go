@@ -24,6 +24,7 @@ type DockerRun struct {
 	Start    time.Time `json:"start"`
 	Finish   time.Time `json:"down"`
 	ExitCode int       `json:"exit_code"`
+	Running  bool      `json:"running"`
 }
 
 // Data returns all the data that should be exposed to the outside world
@@ -33,6 +34,7 @@ func (d *DockerRun) Data() _run.Data {
 		Finish:   d.Finish,
 		Runner:   d.RegisteredName(),
 		ExitCode: d.ExitCode,
+		Running:  d.Running,
 	}
 }
 
@@ -107,6 +109,7 @@ func (d *DockerRun) Down() error {
 	err := cmd.Run()
 	fmt.Println(stdout.String())
 	fmt.Println(stderr.String())
+	d.Running = false
 	return err
 }
 
@@ -137,6 +140,7 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 			}
 		}
 	}
+	d.Running = false
 	d.Finish = time.Now()
 	if status != 0 {
 		// FIXME `docker-compose down`
