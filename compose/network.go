@@ -209,7 +209,11 @@ func (n *Networks) New(project string) (string, error) {
 		if err.Error() != "Error response from daemon: Pool overlaps with other one on this address space" {
 			return "", err
 		} else {
-			log.WithField("subnet", last.String()).Warn("Network overlap, looking if next subnet is ok")
+			pruned, err := n.docker.NetworksPrune(context.TODO(), filters.NewArgs())
+			if err != nil {
+				return "", err
+			}
+			log.WithField("pruned", pruned.NetworksDeleted).WithField("subnet", last.String()).Warn("Network overlap, looking if next subnet is ok")
 		}
 	}
 }
