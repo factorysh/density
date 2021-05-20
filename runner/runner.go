@@ -37,6 +37,8 @@ func (c *Runner) Up(task *_task.Task) (run.Run, error) {
 	} else {
 		action = task.Action
 	}
+	// inject predefined environement vars into task env
+	task.InjectPredefinedEnv()
 	// FIXME add some late environments
 	return action.Up(pwd, task.Environments)
 }

@@ -298,6 +298,23 @@ func (t *Task) PrepareReschedule() {
 
 }
 
+// InjectPredefinedEnv is used to inject or modifiy Density predefined env variables
+func (t *Task) InjectPredefinedEnv() {
+
+	now := time.Now()
+
+	if t.Environments == nil {
+		t.Environments = make(map[string]string)
+	}
+	t.Environments["DENSITY_STARTED_AT_DATE"] = now.Format("2006/01/02")
+	t.Environments["DENSITY_STARTED_AT_TIME"] = now.Format("11:49:02")
+	t.Environments["DENSITY_TASK_ID"] = t.Id.String()
+	t.Environments["DENSITY"] = "true"
+	t.Environments["DENSITY_RUNNER"] = t.Action.RegisteredName()
+	t.Environments["DENSITY_MAX_EXECUTION_TIME"] = t.MaxExectionTime.String()
+
+}
+
 // NewTask init a new task
 func NewTask(o string, a action.Action) Task {
 	t := New()

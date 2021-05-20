@@ -4,6 +4,7 @@ import json
 import time
 import docker
 from pytest import fixture, raises
+import datetime
 import jwt
 
 
@@ -233,6 +234,7 @@ x-batch:
 
 
 def test_status(session):
+    today = datetime.datetime.now().strftime("%Y/%m/%d")
     r = session.get("http://localhost:8042/api/tasks")
     assert r.status_code == 200
     r = session.post(
@@ -254,13 +256,11 @@ x-batch:
     resp = json.loads(r.text)
     id = resp["id"]
 
-    r = session.get("http://localhost:8042/api/task/%s" % id)
-    assert r.status_code == 200
-    assert r.json()["status"] == "Waiting"
     time.sleep(3)
     r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
     assert r.json()["status"] == "Running"
+    assert r.json()["environments"]["DENSITY_STARTED_AT_DATE"] == today
 
 
 def test_every(session):
@@ -290,6 +290,7 @@ x-batch:
     time.sleep(2)
     r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
+    assert r.json()["environments"]["DENSITY"] == "true"
     assert r.json()["status"] == "Running"
     assert r.json()["run"]["runner"] == "compose"
     time.sleep(3)
