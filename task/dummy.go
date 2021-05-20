@@ -37,7 +37,7 @@ func (r *DummyRun) Data() run.Data {
 }
 
 func (r *DummyRun) ID() (string, error) {
-	return "some-id", nil
+	return fmt.Sprintf("Run of %s", r.da.Name), nil
 }
 
 func (r *DummyRun) Status() (run.Status, int, error) {
