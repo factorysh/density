@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	log "github.com/sirupsen/logrus"
 )
 
 var subnetPattern *regexp.Regexp
@@ -175,33 +176,42 @@ func (n *Networks) New(project string) (string, error) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	var err error
-	n.subnets, err = n.subnets.Add()
-	if err != nil {
-		return "", err
-	}
-	last := n.subnets[len(n.subnets)-1]
-	sort.Sort(n.subnets)
-	networkName := fmt.Sprintf("batch-%s-%d-%d", project, last[0], last[1])
+	for {
+		n.subnets, err = n.subnets.Add()
+		if err != nil {
+			return "", err
+		}
+		last := n.subnets[len(n.subnets)-1]
+		sort.Sort(n.subnets)
+		networkName := fmt.Sprintf("batch-%s-%d-%d", project, last[0], last[1])
 
-	_, err = n.docker.NetworkCreate(context.TODO(), networkName, types.NetworkCreate{
-		CheckDuplicate: true,
-		EnableIPv6:     false,
-		Scope:          "local",
-		Driver:         "bridge",
-		Labels: map[string]string{
-			"batch": project,
-		},
-		Attachable: true,
-		IPAM: &network.IPAM{
-			Driver: "default",
-			Config: []network.IPAMConfig{
-				{
-					Subnet: last.String(),
+		_, err := n.docker.NetworkCreate(context.TODO(), networkName, types.NetworkCreate{
+			CheckDuplicate: true,
+			EnableIPv6:     false,
+			Scope:          "local",
+			Driver:         "bridge",
+			Labels: map[string]string{
+				"batch": project,
+			},
+			Attachable: true,
+			IPAM: &network.IPAM{
+				Driver: "default",
+				Config: []network.IPAMConfig{
+					{
+						Subnet: last.String(),
+					},
 				},
 			},
-		},
-	})
-	return networkName, err
+		})
+		if err == nil {
+			return networkName, nil
+		}
+		if err.Error() != "Error response from daemon: Pool overlaps with other one on this address space" {
+			return "", err
+		} else {
+			log.WithField("subnet", last.String()).Warn("Network overlap, looking if next subnet is ok")
+		}
+	}
 }
 
 func (n *Networks) Remove(network string) error {
