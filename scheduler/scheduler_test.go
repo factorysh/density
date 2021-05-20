@@ -133,13 +133,8 @@ func TestFlood(t *testing.T) {
 	defer os.RemoveAll(dir)
 	s := New(NewResources(4, 16*1024), runner.New(dir, nil), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
-	go s.Start(ctx)
 	defer cancel()
-	a := _task.DummyAction{
-		Name:    "Test Flood",
-		Wait:    250,
-		Counter: 0,
-	}
+	go s.Start(ctx)
 	size := 30
 	wait := waitFor(s.Pubsub, size, func(event pubsub.Event) bool {
 		return event.Action == "Done"
@@ -149,8 +144,12 @@ func TestFlood(t *testing.T) {
 			Start:           time.Now(),
 			CPU:             rand.Intn(4) + 1,
 			RAM:             (rand.Intn(16) + 1) * 256,
-			MaxExectionTime: 30 * time.Second,
-			Action:          &a,
+			MaxExectionTime: 10 * time.Second,
+			Action: &_task.DummyAction{
+				Name:    fmt.Sprintf("Test Flood #%d", i),
+				Wait:    250,
+				Counter: 0,
+			},
 		})
 	}
 	wait.Wait()
