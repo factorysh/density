@@ -12,10 +12,10 @@ import (
 
 // DummyAction is the most basic action, used for tests and illustration purpose
 type DummyAction struct {
-	Name     string  `json:"name"`
-	Wait     float64 `json:"wait"`
-	Counter  int64   `json:"counter"`
-	ExitCode int     `json:"exit_code"`
+	Name     string        `json:"name"`
+	Wait     time.Duration `json:"wait"`
+	Counter  int64         `json:"counter"`
+	ExitCode int           `json:"exit_code"`
 	waiters  []chan interface{}
 }
 
@@ -82,11 +82,11 @@ func (da *DummyAction) Up(pwd string, environments map[string]string) (run.Run, 
 		da.waiters = make([]chan interface{}, 0)
 	}
 	if da.Wait == 0 {
-		da.Wait = 0.1
+		da.Wait = 100 * time.Microsecond
 	}
 	go func() {
 		// Sleep
-		time.Sleep(time.Duration(da.Wait) * time.Millisecond)
+		time.Sleep(da.Wait)
 		// Add to dedicated counter
 		atomic.AddInt64(&da.Counter, 1)
 		for _, waiter := range da.waiters {

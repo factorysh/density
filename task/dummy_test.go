@@ -37,7 +37,7 @@ func TestDummy(t *testing.T) {
 func TestDummyCancel(t *testing.T) {
 	d := &DummyAction{
 		Name: "bob",
-		Wait: 30,
+		Wait: 30 * time.Millisecond,
 	}
 	run, err := d.Up("/tmp", nil)
 	assert.NoError(t, err)
@@ -55,7 +55,7 @@ func TestDummyCancel(t *testing.T) {
 func TestDummyTimeout(t *testing.T) {
 	d := &DummyAction{
 		Name: "bob",
-		Wait: 30,
+		Wait: 30 * time.Millisecond,
 	}
 	run, err := d.Up("/tmp", nil)
 	assert.NoError(t, err)

@@ -147,7 +147,7 @@ func TestFlood(t *testing.T) {
 			MaxExectionTime: 10 * time.Second,
 			Action: &_task.DummyAction{
 				Name:    fmt.Sprintf("Test Flood #%d", i),
-				Wait:    250,
+				Wait:    250 * time.Millisecond,
 				Counter: 0,
 			},
 		})
