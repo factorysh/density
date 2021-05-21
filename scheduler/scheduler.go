@@ -11,7 +11,6 @@ import (
 	"github.com/factorysh/density/pubsub"
 	_store "github.com/factorysh/density/store"
 	"github.com/factorysh/density/task"
-	_task "github.com/factorysh/density/task"
 	_run "github.com/factorysh/density/task/run"
 	_status "github.com/factorysh/density/task/status"
 	"github.com/factorysh/density/todo"
@@ -48,7 +47,7 @@ func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 	}
 }
 
-func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
+func (s *Scheduler) Add(task *task.Task) (uuid.UUID, error) {
 	if task.Id != uuid.Nil {
 		return uuid.Nil, errors.New("I am choosing the uuid, not you")
 	}
@@ -84,11 +83,11 @@ func (s *Scheduler) Add(task *_task.Task) (uuid.UUID, error) {
 // Load will fetch jobs data and status from storage
 func (s *Scheduler) Load() error {
 	// to remove tasks
-	garbage := make([]*_task.Task, 0)
+	garbage := make([]*task.Task, 0)
 	// to update tasks
-	update := make([]*_task.Task, 0)
+	update := make([]*task.Task, 0)
 
-	err := s.tasks.ForEach(func(t *_task.Task) error {
+	err := s.tasks.ForEach(func(t *task.Task) error {
 		// remember old status
 		old := t.Status
 		// fresh status
@@ -219,7 +218,7 @@ func (s *Scheduler) oneLoop() {
 }
 
 // Exec chosen task
-func (s *Scheduler) execTask(chosen *_task.Task) {
+func (s *Scheduler) execTask(chosen *task.Task) {
 	s.lock.Lock()
 	ctxResources, cancelResources := context.WithCancel(context.TODO())
 	s.resources.Consume(ctxResources, chosen.CPU, chosen.RAM)
@@ -274,10 +273,10 @@ func (s *Scheduler) execTask(chosen *_task.Task) {
 }
 
 // List all the tasks associated with this scheduler
-func (s *Scheduler) List() []*_task.Task {
-	tasks := make([]*_task.Task, 0)
+func (s *Scheduler) List() []*task.Task {
+	tasks := make([]*task.Task, 0)
 
-	s.tasks.ForEach(func(t *_task.Task) error {
+	s.tasks.ForEach(func(t *task.Task) error {
 		tasks = append(tasks, t)
 		return nil
 	})
@@ -286,13 +285,13 @@ func (s *Scheduler) List() []*_task.Task {
 }
 
 // Filter tasks for a specific owner
-func (s *Scheduler) Filter(owner string, labels map[string]string) []*_task.Task {
-	tasks := make([]*_task.Task, 0)
+func (s *Scheduler) Filter(owner string, labels map[string]string) []*task.Task {
+	tasks := make([]*task.Task, 0)
 
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
-	s.tasks.ForEach(func(t *_task.Task) error {
+	s.tasks.ForEach(func(t *task.Task) error {
 		if owner != "" && t.Owner != owner {
 			return nil
 		}
@@ -309,12 +308,12 @@ func (s *Scheduler) Filter(owner string, labels map[string]string) []*_task.Task
 	return tasks
 }
 
-func (s *Scheduler) readyToGo() []*_task.Task {
+func (s *Scheduler) readyToGo() []*task.Task {
 	now := time.Now()
-	tasks := make(_task.TaskByKarma, 0)
+	tasks := make(task.TaskByKarma, 0)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	s.tasks.ForEach(func(task *_task.Task) error {
+	s.tasks.ForEach(func(task *task.Task) error {
 		// enough CPU, enough RAM, Start date is okay
 		if task.Start.Before(now) && task.Status == _status.Waiting && s.resources.IsDoable(task.CPU, task.RAM) {
 			tasks = append(tasks, task)
@@ -325,14 +324,14 @@ func (s *Scheduler) readyToGo() []*_task.Task {
 	return tasks
 }
 
-func (s *Scheduler) next() *_task.Task {
+func (s *Scheduler) next() *task.Task {
 	if s.tasks.Length() == 0 {
 		return nil
 	}
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	tasks := make(_task.TaskByStart, 0)
-	s.tasks.ForEach(func(task *_task.Task) error {
+	tasks := make(task.TaskByStart, 0)
+	s.tasks.ForEach(func(task *task.Task) error {
 		if task.Status == _status.Waiting {
 			tasks = append(tasks, task)
 		}
@@ -345,7 +344,7 @@ func (s *Scheduler) next() *_task.Task {
 	return tasks[0]
 }
 
-func (s *Scheduler) GetTask(id uuid.UUID) (*_task.Task, error) {
+func (s *Scheduler) GetTask(id uuid.UUID) (*task.Task, error) {
 	return s.tasks.Get(id)
 }
 
@@ -407,7 +406,7 @@ func (s *Scheduler) Length() int {
 func (s *Scheduler) Flush(age time.Duration) int {
 	now := time.Now()
 	i := 0
-	s.tasks.DeleteWithClause(func(task *_task.Task) bool {
+	s.tasks.DeleteWithClause(func(task *task.Task) bool {
 		if task.Status != _status.Running && task.Status != _status.Waiting && now.Sub(task.Mtime) > age {
 			i++
 			return true
