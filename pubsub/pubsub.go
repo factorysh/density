@@ -32,11 +32,11 @@ func NewPubSub() *PubSub {
 // Subscribe
 func (p *PubSub) Subscribe(ctx context.Context) chan Event {
 	p.lock.Lock()
+	defer p.lock.Unlock()
 	id := p.cpt
 	p.cpt++
 	p.subscribers[id] = make(chan Event)
 	p.wg.Add(1)
-	p.lock.Unlock()
 	go func(id uint64) {
 		<-ctx.Done() // closing the subscription
 		p.lock.Lock()

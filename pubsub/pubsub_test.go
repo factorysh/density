@@ -38,3 +38,31 @@ func TestPubsub(t *testing.T) {
 	ps.Wait()
 	assert.Len(t, ps.subscribers, 0)
 }
+
+func TestPubSubFlood(t *testing.T) {
+	s := 1000
+	m := 1000
+	ps := NewPubSub()
+	wg := sync.WaitGroup{}
+	wg.Add(s * m)
+	ready := sync.WaitGroup{}
+	ready.Add(s)
+	for i := 0; i < s; i++ {
+		go func() {
+			ctx, cancel := context.WithCancel(context.TODO())
+			defer cancel()
+			events := ps.Subscribe(ctx)
+			ready.Done()
+			for {
+				event := <-events
+				fmt.Println(event)
+				wg.Done()
+			}
+		}()
+	}
+	ready.Wait()
+	for i := 0; i < m; i++ {
+		ps.Publish(Event{})
+	}
+	wg.Wait()
+}
