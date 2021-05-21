@@ -62,13 +62,13 @@ func TestScheduler(t *testing.T) {
 	task := &_task.Task{
 		Owner:           "test",
 		Start:           time.Now(),
-		MaxExectionTime: 30 * time.Second,
+		MaxExectionTime: 5 * time.Second,
 		Labels: map[string]string{
 			"key": "value",
 		},
 		Action: &_task.DummyAction{
 			Name: "Action A",
-			Wait: 10,
+			Wait: 10 * time.Millisecond,
 		},
 		CPU: 2,
 		RAM: 256,
