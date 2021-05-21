@@ -47,6 +47,19 @@ func waitFor(ps *pubsub.PubSub, size int, clause func(evt pubsub.Event) bool) *s
 	return wait
 }
 
+func TestSchedulerStartStop(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "scheduler-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	s := New(NewResources(4, 16*1024), runner.New(dir, nil), store.NewMemoryStore())
+	ctx, cancel := context.WithCancel(context.Background())
+	s.Start(ctx)
+	assert.True(t, s.started)
+	cancel()
+	s.WaitStop()
+	assert.False(t, s.started)
+}
+
 func TestScheduler(t *testing.T) {
 	dir, err := ioutil.TempDir(os.TempDir(), "scheduler-")
 	assert.NoError(t, err)
