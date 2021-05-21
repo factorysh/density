@@ -36,13 +36,15 @@ func (p *PubSub) Subscribe(ctx context.Context) chan Event {
 	p.subscribers[id] = make(chan Event)
 	p.wg.Add(1)
 	p.lock.Unlock()
-	go func() {
-		<-ctx.Done()
+	go func(id uint64) {
+		<-ctx.Done() // closing the subscription
 		p.lock.Lock()
 		delete(p.subscribers, id)
 		p.wg.Done()
 		p.lock.Unlock()
-	}()
+		log.WithField("id", id).Info("Closing subscribtion")
+	}(id)
+	log.WithField("id", id).WithField("subscribers", len(p.subscribers)).Info("Opening subscribtion")
 	return p.subscribers[id]
 }
 
