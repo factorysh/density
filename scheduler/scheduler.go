@@ -26,8 +26,8 @@ type Scheduler struct {
 	stop                 chan bool
 	runner               Runner
 	Pubsub               *pubsub.PubSub
-	dataDir              string
 	stopping             *sync.WaitGroup
+	started              bool
 }
 
 type Runner interface {
@@ -44,10 +44,14 @@ func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 		runner:               runner,
 		Pubsub:               pubsub.NewPubSub(),
 		stopping:             &sync.WaitGroup{},
+		started:              false,
 	}
 }
 
 func (s *Scheduler) Add(task *task.Task) (uuid.UUID, error) {
+	if !s.started {
+		return uuid.Nil, errors.New("Scheduler is not started")
+	}
 	if task.Id != uuid.Nil {
 		return uuid.Nil, errors.New("I am choosing the uuid, not you")
 	}
@@ -167,6 +171,9 @@ func (s *Scheduler) Load() error {
 
 // Start is the main loop
 func (s *Scheduler) Start(ctx context.Context) {
+	if s.started {
+		panic("Start once")
+	}
 	s.stopping.Add(1)
 	// FIXME, find all detached running tasks in s.tasks
 	log.Info("Starting main loop")
@@ -179,6 +186,8 @@ func (s *Scheduler) Start(ctx context.Context) {
 			if err != nil {
 				log.WithError(err).Error("Stop and sync")
 			}
+			s.started = false
+			log.Info("Scheduler loop is stopped")
 			return // stop the loop
 		case <-ctx.Done():
 			err := s.tasks.store.Sync()
@@ -186,6 +195,8 @@ func (s *Scheduler) Start(ctx context.Context) {
 			if err != nil {
 				log.WithError(err).Error("Context.Done and sync")
 			}
+			s.started = false
+			log.Info("Scheduler start context is done, loop is stopped.")
 			return // stop the loop
 		case <-s.somethingNewHappened.Wait():
 		}
