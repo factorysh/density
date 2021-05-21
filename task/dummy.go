@@ -6,9 +6,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/factorysh/density/task/action"
 	"github.com/factorysh/density/task/run"
 	_status "github.com/factorysh/density/task/status"
 )
+
+var _ action.Action = &DummyAction{}
+var _ action.Run = &DummyRun{}
 
 // DummyAction is the most basic action, used for tests and illustration purpose
 type DummyAction struct {
@@ -54,15 +58,15 @@ func (r *DummyRun) Wait(ctx context.Context) (_status.Status, error) {
 	var status _status.Status
 	select {
 	case <-waiter:
-		fmt.Println("done")
+		fmt.Printf("%s done\n", r.da.Name)
 		status = _status.Done
 	case <-ctx.Done():
 		switch ctx.Err() {
 		case context.Canceled:
-			fmt.Println("canceled")
+			fmt.Printf("%s canceled\n", r.da.Name)
 			status = _status.Canceled
 		case context.DeadlineExceeded:
-			fmt.Println("timeout")
+			fmt.Printf("%s timeout\n", r.da.Name)
 			status = _status.Timeout
 		}
 	}
