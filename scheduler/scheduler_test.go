@@ -54,7 +54,8 @@ func TestScheduler(t *testing.T) {
 	s := New(NewResources(4, 16*1024), runner.New(dir, nil), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go s.Start(ctx)
+	s.Start(ctx)
+	assert.True(t, s.started)
 	wait := waitFor(s.Pubsub, 1, func(event pubsub.Event) bool {
 		return event.Action == "Done"
 	})
@@ -136,7 +137,7 @@ func TestFlood(t *testing.T) {
 	s := New(NewResources(4, 16*1024), runner.New(dir, nil), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go s.Start(ctx)
+	s.Start(ctx)
 	size := 30
 	wait := waitFor(s.Pubsub, size, func(event pubsub.Event) bool {
 		return event.Action == "Done"
@@ -164,7 +165,7 @@ func TestTimeout(t *testing.T) {
 	s := New(NewResources(4, 16*1024), runner.New(dir, nil), store.NewMemoryStore())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go s.Start(ctx)
+	s.Start(ctx)
 
 	wait := waitFor(s.Pubsub, 1, func(event pubsub.Event) bool {
 		return event.Action == "Done"
@@ -243,7 +244,7 @@ x-batch:
 	s := New(NewResources(4, 16*1024), runner.New(dir, nil), store)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go s.Start(ctx)
+	s.Start(ctx)
 
 	// init tasks
 	tasks := [3]_task.Task{
@@ -289,7 +290,7 @@ x-batch:
 
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
-	go s.Start(ctx)
+	s.Start(ctx)
 
 	// first one should be finished
 	task, err := s.tasks.Get(uuids[0])

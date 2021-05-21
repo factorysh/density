@@ -169,7 +169,7 @@ func (s *Scheduler) Load() error {
 	return nil
 }
 
-// Start is the main loop
+// Start is the main loop, non blocking
 func (s *Scheduler) Start(ctx context.Context) {
 	if s.started {
 		panic("Start once")
@@ -177,31 +177,33 @@ func (s *Scheduler) Start(ctx context.Context) {
 	s.stopping.Add(1)
 	// FIXME, find all detached running tasks in s.tasks
 	log.Info("Starting main loop")
-	defer log.Info("Ending main loop")
-	for {
-		select { // waiting for a trigger
-		case <-s.stop:
-			err := s.tasks.store.Sync()
-			s.stopping.Done()
-			if err != nil {
-				log.WithError(err).Error("Stop and sync")
+	go func() {
+		for {
+			select { // waiting for a trigger
+			case <-s.stop:
+				err := s.tasks.store.Sync()
+				s.stopping.Done()
+				if err != nil {
+					log.WithError(err).Error("Stop and sync")
+				}
+				s.started = false
+				log.Info("Scheduler loop is stopped")
+				return // stop the loop
+			case <-ctx.Done():
+				err := s.tasks.store.Sync()
+				if err != nil {
+					log.WithError(err).Error("Context.Done and sync")
+				}
+				s.started = false
+				s.stopping.Done()
+				log.Info("Scheduler start context is done, loop is stopped.")
+				return // stop the loop
+			case <-s.somethingNewHappened.Wait():
 			}
-			s.started = false
-			log.Info("Scheduler loop is stopped")
-			return // stop the loop
-		case <-ctx.Done():
-			err := s.tasks.store.Sync()
-			s.stopping.Done()
-			if err != nil {
-				log.WithError(err).Error("Context.Done and sync")
-			}
-			s.started = false
-			log.Info("Scheduler start context is done, loop is stopped.")
-			return // stop the loop
-		case <-s.somethingNewHappened.Wait():
+			s.oneLoop()
 		}
-		s.oneLoop()
-	}
+	}()
+	s.started = true
 }
 
 func (s *Scheduler) oneLoop() {
