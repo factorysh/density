@@ -29,6 +29,7 @@ func NewPubSub() *PubSub {
 	}
 }
 
+// Subscribe
 func (p *PubSub) Subscribe(ctx context.Context) chan Event {
 	p.lock.Lock()
 	id := p.cpt
@@ -48,16 +49,18 @@ func (p *PubSub) Subscribe(ctx context.Context) chan Event {
 	return p.subscribers[id]
 }
 
+// Publish an event
 func (p *PubSub) Publish(evt Event) {
 	p.lock.Lock()
-	log.WithField("event", evt).WithField("subscribers", len(p.subscribers)).Info("publish")
 	defer p.lock.Unlock()
+	log.WithField("event", evt).WithField("subscribers", len(p.subscribers)).Info("publish")
 	// Warning, chans are blocking
 	for _, c := range p.subscribers {
 		c <- evt
 	}
 }
 
+// Wait for all subscribers closing
 func (p *PubSub) Wait() {
 	p.wg.Wait()
 }
