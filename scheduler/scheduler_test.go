@@ -39,6 +39,8 @@ func waitFor(ps *pubsub.PubSub, size int, clause func(evt pubsub.Event) bool) *s
 				if size == 0 {
 					return
 				}
+			} else {
+				fmt.Println("Just an event ", event)
 			}
 		}
 	}(size)
