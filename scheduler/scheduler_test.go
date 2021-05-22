@@ -47,6 +47,38 @@ func waitFor(ps *pubsub.PubSub, size int, clause func(evt pubsub.Event) bool) *s
 	return wait
 }
 
+func TestWaitFor(t *testing.T) {
+	ps := pubsub.NewPubSub()
+	n := 1000
+	wg := waitFor(ps, n, func(evt pubsub.Event) bool {
+		return evt.Action == "demo"
+	})
+	wgSub := &sync.WaitGroup{}
+	wgSub.Add(100)
+	for i := 0; i < 100; i++ {
+		go func() {
+			ctx, cancel := context.WithCancel(context.TODO())
+			s := ps.Subscribe(ctx)
+			wgSub.Done()
+			for j := 0; j < n; j++ {
+				time.Sleep(time.Duration(rand.Float64()*10) * time.Millisecond)
+				<-s
+			}
+			cancel()
+		}()
+	}
+	wgSub.Wait()
+	for i := 0; i < n; i++ {
+		go func() {
+			time.Sleep(time.Duration(rand.Float64()*1000) * time.Millisecond)
+			ps.Publish(pubsub.Event{
+				Action: "demo",
+			})
+		}()
+	}
+	wg.Wait()
+}
+
 func TestSchedulerStartStop(t *testing.T) {
 	dir, err := ioutil.TempDir(os.TempDir(), "scheduler-")
 	assert.NoError(t, err)
