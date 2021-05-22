@@ -3,8 +3,10 @@ package pubsub
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -62,7 +64,10 @@ func TestPubSubFlood(t *testing.T) {
 	}
 	ready.Wait()
 	for i := 0; i < m; i++ {
-		ps.Publish(Event{})
+		go func() {
+			time.Sleep(time.Duration(rand.Float64()*10) * time.Millisecond)
+			ps.Publish(Event{})
+		}()
 	}
 	wg.Wait()
 }
