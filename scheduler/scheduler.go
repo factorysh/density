@@ -48,12 +48,13 @@ func New(resources *Resources, runner Runner, store _store.Store) *Scheduler {
 	}
 }
 
+// Add a new task
 func (s *Scheduler) Add(task *task.Task) (uuid.UUID, error) {
 	if !s.started {
 		return uuid.Nil, errors.New("Scheduler is not started")
 	}
 	if task.Id != uuid.Nil {
-		return uuid.Nil, errors.New("I am choosing the uuid, not you")
+		return uuid.Nil, errors.New("don't choose your UUID, it's my job")
 	}
 	err := s.resources.Check(task.CPU, task.RAM)
 	if err != nil {
@@ -86,6 +87,9 @@ func (s *Scheduler) Add(task *task.Task) (uuid.UUID, error) {
 
 // Load will fetch jobs data and status from storage
 func (s *Scheduler) Load() error {
+	if s.started {
+		return errors.New("don't load a started scheduler")
+	}
 	// to remove tasks
 	garbage := make([]*task.Task, 0)
 	// to update tasks
@@ -164,7 +168,6 @@ func (s *Scheduler) Load() error {
 		}
 	}
 
-	// FIXME if Start() was already call, something bad will happen
 	s.oneLoop()
 	return nil
 }
