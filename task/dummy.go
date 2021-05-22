@@ -58,19 +58,18 @@ func (r *DummyRun) Wait(ctx context.Context) (_status.Status, error) {
 	var status _status.Status
 	select {
 	case <-waiter:
-		fmt.Printf("%s done\n", r.da.Name)
+		fmt.Printf("DummyRun.Wait %s done\n", r.da.Name)
 		status = _status.Done
 	case <-ctx.Done():
 		switch ctx.Err() {
 		case context.Canceled:
-			fmt.Printf("%s canceled\n", r.da.Name)
+			fmt.Printf("DummyRun.Wait %s canceled\n", r.da.Name)
 			status = _status.Canceled
 		case context.DeadlineExceeded:
-			fmt.Printf("%s timeout\n", r.da.Name)
+			fmt.Printf("DummyRun.Wait %s timeout\n", r.da.Name)
 			status = _status.Timeout
 		}
 	}
-
 	return status, nil
 }
 
@@ -81,7 +80,7 @@ func (r DummyRun) Down() error {
 // Run action interface implementation
 func (da *DummyAction) Up(pwd string, environments map[string]string) (run.Run, error) {
 	// Print name
-	fmt.Println("DummyAction :", da.Name)
+	fmt.Println("DummyAction.Up :", da.Name)
 	if da.waiters == nil {
 		da.waiters = make([]chan interface{}, 0)
 	}
