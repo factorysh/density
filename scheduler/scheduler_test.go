@@ -213,7 +213,7 @@ func TestTimeout(t *testing.T) {
 	s.Start(ctx)
 
 	wait := waitFor(s.Pubsub, 1, func(event pubsub.Event) bool {
-		return event.Action == "Done"
+		return event.Action == "Done" || event.Action == "Timeout"
 	})
 	a := _task.DummyAction{
 		Name: "Test Timeout",
@@ -232,7 +232,7 @@ func TestTimeout(t *testing.T) {
 	// get task status from storage
 	fromStorage, err := s.tasks.Get(task.Id)
 	assert.NoError(t, err)
-	assert.Equal(t, _status.Done, fromStorage.Status)
+	assert.Equal(t, _status.Timeout, fromStorage.Status)
 	assert.Equal(t, s.tasks.Length(), 1)
 	s.tasks.ForEach(func(tt *_task.Task) error {
 		assert.NotEqual(t, _status.Waiting, tt.Status)
