@@ -17,7 +17,9 @@ import (
 func init() {
 }
 
-// DockerRun implements task.Run
+var _ _run.Run = &DockerRun{}
+
+// DockerRun implements task.Run for Docker
 type DockerRun struct {
 	Path     string    `json:"path"`
 	Id       string    `json:"id"`
@@ -118,11 +120,18 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 	if err != nil {
 		return _status.Error, err
 	}
-	waitC, errC := cli.ContainerWait(ctx, d.Id, "")
+	ctxWait, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+	waitC, errC := cli.ContainerWait(ctxWait, d.Id, "")
+
 	loop := true
 	var status _status.Status
 	for loop {
 		select {
+		case <-ctx.Done(): // timeout
+			cancel() // don't wait anymore
+			status = _status.Canceled
+			loop = false
 		case <-waitC: // FIXME exitcode is get later
 			loop = false
 		case err := <-errC:
@@ -148,7 +157,6 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 		if err != nil {
 			return _status.Error, err
 		}
-		return status, nil
 	}
 	inspect, err := cli.ContainerInspect(context.TODO(), d.Id)
 	if err != nil {
@@ -160,6 +168,7 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 			status = _status.Done
 		}
 	}
+	// FIXME remove old container after waiting a bit
 	d.ExitCode = inspect.State.ExitCode
 	return status, nil
 }
