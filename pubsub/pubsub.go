@@ -3,6 +3,7 @@ package pubsub
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -14,7 +15,7 @@ type Event struct {
 }
 
 type PubSub struct {
-	lock        *sync.Mutex
+	lock        *sync.RWMutex
 	cpt         uint64
 	subscribers map[uint64]chan Event
 	wg          *sync.WaitGroup
@@ -22,7 +23,7 @@ type PubSub struct {
 
 func NewPubSub() *PubSub {
 	return &PubSub{
-		lock:        &sync.Mutex{},
+		lock:        &sync.RWMutex{},
 		cpt:         0,
 		subscribers: make(map[uint64]chan Event),
 		wg:          &sync.WaitGroup{},
@@ -51,15 +52,19 @@ func (p *PubSub) Subscribe(ctx context.Context) chan Event {
 
 // Publish an event
 func (p *PubSub) Publish(evt Event) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-	log.WithField("event", evt).WithField("subscribers", len(p.subscribers)).Info("publish")
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+	var worst time.Duration = 0
 	// Warning, chans are blocking
 	for _, c := range p.subscribers {
-		go func(c chan Event) {
-			c <- evt
-		}(c)
+		now := time.Now()
+		c <- evt
+		delta := time.Since(now)
+		if delta > worst {
+			worst = delta
+		}
 	}
+	log.WithField("event", evt).WithField("subscribers", len(p.subscribers)).WithField("worst duration", worst).Info("publish")
 }
 
 // Wait for all subscribers closing
