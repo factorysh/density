@@ -147,20 +147,20 @@ func TestScheduler(t *testing.T) {
 			Start:           time.Now(),
 			CPU:             2,
 			RAM:             512,
-			MaxExectionTime: 30 * time.Second,
+			MaxExectionTime: 10 * time.Second,
 			Action: &_task.DummyAction{
 				Name: "Action B",
-				Wait: 400,
+				Wait: 400 * time.Millisecond,
 			},
 		},
 		{
 			Start:           time.Now(),
 			CPU:             3,
 			RAM:             1024,
-			MaxExectionTime: 30 * time.Second,
+			MaxExectionTime: 10 * time.Second,
 			Action: &_task.DummyAction{
 				Name: "Action C",
-				Wait: 300,
+				Wait: 300 * time.Millisecond,
 			},
 		},
 	} {
@@ -217,7 +217,7 @@ func TestTimeout(t *testing.T) {
 	})
 	a := _task.DummyAction{
 		Name: "Test Timeout",
-		Wait: 10,
+		Wait: 10 * time.Second,
 	}
 	task := &_task.Task{
 		Start:           time.Now(),
