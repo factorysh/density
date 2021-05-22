@@ -210,13 +210,13 @@ func (s *Scheduler) Start(ctx context.Context) {
 }
 
 func (s *Scheduler) oneLoop() {
+	s.somethingNewHappened.Done()
 	chrono := time.Now()
 	todos := s.readyToGo()
 	l := log.WithField("tasks", s.tasks.Length()).WithField("todos", len(todos))
 	defer l.WithField("chrono", time.Since(chrono)).Debug("Main loop iteration")
 	if len(todos) > 0 { // Something todo
 		s.execTask(todos[0])
-		s.somethingNewHappened.Done()
 		s.somethingNewHappened.Ping() // is there any // tasks waiting?
 		return
 	}
@@ -230,7 +230,6 @@ func (s *Scheduler) oneLoop() {
 			s.somethingNewHappened.Ping()
 		})
 	} // else no future
-	s.somethingNewHappened.Done()
 }
 
 // Exec chosen task
