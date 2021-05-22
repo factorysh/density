@@ -129,8 +129,8 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 	for loop {
 		select {
 		case <-ctx.Done(): // timeout
-			cancel() // don't wait anymore
-			status = _status.Canceled
+			cancel()                  // don't wait anymore
+			status = _status.Canceled // FIXME is it a cancel or a timeout?
 			loop = false
 		case <-waitC: // FIXME exitcode is get later
 			loop = false
