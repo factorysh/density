@@ -26,24 +26,24 @@ func waitFor(ps *pubsub.PubSub, size int, clause func(evt pubsub.Event) bool) *s
 	wait := &sync.WaitGroup{}
 	wait.Add(size)
 
-	go func(size int) {
+	go func(ps *pubsub.PubSub, size int, clause func(evt pubsub.Event) bool) {
 		ctx, cancel := context.WithCancel(context.TODO())
 		defer cancel()
 		events := ps.Subscribe(ctx)
 		for {
 			event := <-events
-			fmt.Println("wait for", event)
 			if clause(event) {
 				wait.Done()
 				size--
 				if size == 0 {
+					fmt.Println("Closing waitfor loop")
 					return
 				}
 			} else {
 				fmt.Println("Just an event ", event)
 			}
 		}
-	}(size)
+	}(ps, size, clause)
 	return wait
 }
 
