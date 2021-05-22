@@ -35,7 +35,7 @@ func (p *PubSub) Subscribe(ctx context.Context) chan Event {
 	defer p.lock.Unlock()
 	id := p.cpt
 	p.cpt++
-	p.subscribers[id] = make(chan Event)
+	p.subscribers[id] = make(chan Event, 1)
 	p.wg.Add(1)
 	go func(id uint64) {
 		<-ctx.Done() // closing the subscription
@@ -56,7 +56,9 @@ func (p *PubSub) Publish(evt Event) {
 	log.WithField("event", evt).WithField("subscribers", len(p.subscribers)).Info("publish")
 	// Warning, chans are blocking
 	for _, c := range p.subscribers {
-		c <- evt
+		go func(c chan Event) {
+			c <- evt
+		}(c)
 	}
 }
 
