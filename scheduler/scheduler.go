@@ -211,10 +211,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 
 func (s *Scheduler) oneLoop() {
 	s.somethingNewHappened.Done()
-	chrono := time.Now()
 	todos := s.readyToGo()
-	l := log.WithField("tasks", s.tasks.Length()).WithField("todos", len(todos))
-	defer l.WithField("chrono", time.Since(chrono)).Debug("Main loop iteration")
 	if len(todos) > 0 { // Something todo
 		s.execTask(todos[0])
 		s.somethingNewHappened.Ping() // is there any // tasks waiting?
@@ -225,7 +222,6 @@ func (s *Scheduler) oneLoop() {
 	n := s.next()
 	if n != nil {
 		sleep := n.Start.Sub(now)
-		l.WithField("task", n.Id).WithField("sleep", sleep).Info("Waiting")
 		time.AfterFunc(sleep, func() {
 			s.somethingNewHappened.Ping()
 		})
