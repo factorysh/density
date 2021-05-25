@@ -30,10 +30,8 @@ func (s *Status) UnmarshalJSON(b []byte) error {
 	var start uint8
 	for i, end := range _Status_index[1:] {
 		m := _Status_name[start:end]
-		fmt.Println(raw, m, i)
 		if m == raw {
 			*s = Status(i)
-			fmt.Println("debug:", i, s.String())
 			return nil
 		}
 		start = end
