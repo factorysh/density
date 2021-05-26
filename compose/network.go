@@ -135,7 +135,7 @@ func SubnetFromDocker(docker *client.Client) (BySubnet, error) {
 			subnet, err := ParseSubnet(config.Subnet)
 			if err != nil {
 				// Do I need to handle strange subnet? hum, no
-				continue
+				return nil, err
 			}
 			subnets = append(subnets, subnet)
 		}
