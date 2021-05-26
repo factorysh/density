@@ -129,23 +129,20 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 	for loop {
 		select {
 		case <-ctx.Done(): // timeout
-			cancel()                  // don't wait anymore
-			status = _status.Canceled // FIXME is it a cancel or a timeout?
 			loop = false
+			cancel() // don't wait anymore
+			switch ctx.Err() {
+			case context.Canceled:
+				status = _status.Canceled
+			case context.DeadlineExceeded:
+				status = _status.Timeout
+			}
 		case <-waitC: // FIXME exitcode is get later
 			loop = false
 		case err := <-errC:
 			if err != nil {
-				switch err {
-				case context.DeadlineExceeded:
-					loop = false
-					status = _status.Timeout
-				case context.Canceled:
-					loop = false
-					status = _status.Canceled
-				default:
-					return _status.Error, err
-				}
+				loop = false
+				status = _status.Error
 			}
 		}
 	}
@@ -162,7 +159,6 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 	if err != nil {
 		return _status.Error, err
 	}
-	status = _status.Error
 	if inspect.State.Status == "exited" {
 		if inspect.State.ExitCode == 0 {
 			status = _status.Done
@@ -170,5 +166,5 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 	}
 	// FIXME remove old container after waiting a bit
 	d.ExitCode = inspect.State.ExitCode
-	return status, nil
+	return status, err
 }

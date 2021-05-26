@@ -63,6 +63,6 @@ func TestRunAndTimeout(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, time.Since(dr.Start) < 2*time.Second)
 	assert.NotEqual(t, _status.Done, status)
-	assert.Equal(t, _status.Canceled, status)
+	assert.Equal(t, _status.Timeout, status)
 	assert.NotEqual(t, 0, dr.ExitCode)
 }
