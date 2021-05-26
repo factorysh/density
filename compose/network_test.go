@@ -33,7 +33,7 @@ func TestNetworkParse(t *testing.T) {
 		"172.19.30.0/20",
 	} {
 		_, err = ParseSubnet(p)
-		assert.Error(t, err)
+		assert.Error(t, err, p)
 	}
 }
 

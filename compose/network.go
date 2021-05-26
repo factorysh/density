@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -16,8 +14,6 @@ import (
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 )
-
-var subnetPattern *regexp.Regexp
 
 // Subnet is a class B somewhere between 172.18.0.0 and 172.31.255.255 with a /24
 //
@@ -49,32 +45,28 @@ func (s Subnet) String() string {
 	return fmt.Sprintf("172.%d.%d.0/24", s[0], s[1])
 }
 
+// Value of the two middles bytes
 func (s Subnet) Value() uint16 {
 	return uint16(s[0])*256 + uint16(s[1])
 }
 
 func ParseSubnet(txt string) (Subnet, error) {
-	if subnetPattern == nil {
-		subnetPattern = regexp.MustCompile("172\\.(\\d+)\\.(\\d+)\\.\\d+/24")
-	}
-	m := subnetPattern.FindStringSubmatch(txt)
-	if m == nil {
-		return Subnet{}, fmt.Errorf("Can't parse %s", txt)
-	}
-	a1, err := strconv.Atoi(m[1])
+	ip, ipnet, err := net.ParseCIDR(txt)
 	if err != nil {
 		return Subnet{}, err
 	}
-	a2, err := strconv.Atoi(m[2])
-	if err != nil {
-		return Subnet{}, err
+	ip = ip.To4()
+	if ip == nil {
+		return Subnet{}, fmt.Errorf("only ipv4 is handled : [%s]", txt)
 	}
-	for _, a := range []int{a1, a2} {
-		if a < 0 || a > 255 {
-			return Subnet{}, fmt.Errorf("Not a byte %v", a)
-		}
+	ones, _ := ipnet.Mask.Size()
+	if ones != 24 {
+		return Subnet{}, fmt.Errorf("only /24 is handled : [%s] %d", txt, ones)
 	}
-	return Subnet{byte(a1), byte(a2)}, nil
+	if ip[0] != 172 {
+		return Subnet{}, fmt.Errorf("only 172.x.x.x is handled : [%s]", txt)
+	}
+	return Subnet{ip[1], ip[2]}, nil
 }
 
 type BySubnet []Subnet
