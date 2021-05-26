@@ -87,9 +87,9 @@ func (b BySubnet) next() (Subnet, error) {
 		return first, nil
 	}
 	n := uint16(18 * 256)
-	for i, s := range b {
-		if s.Value() != n {
-			return b[i-1].Next()
+	for i, subnet := range b { // looking for a hole
+		if subnet.Value() != n {
+			return b[i-1].Next() // FIXME this code is ugly, i can be 0
 		}
 		n++
 	}
