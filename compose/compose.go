@@ -90,7 +90,7 @@ func (c *Compose) WalkServices(fn func(name string, value map[string]interface{}
 		if !strings.HasPrefix(k, "x-") {
 			vv, ok := v.(map[string]interface{})
 			if !ok {
-				return fmt.Errorf("Not a map[string]inetrface{} %v", v)
+				return fmt.Errorf("not a map[string]inetrface{} %v", v)
 			}
 			err := fn(k, vv)
 			if err != nil {
