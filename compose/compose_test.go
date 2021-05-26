@@ -173,10 +173,11 @@ func TestRunComposeTimeout(t *testing.T) {
 	defer os.RemoveAll(dir)
 	run, err := c.Up(dir, nil)
 	assert.NoError(t, err)
-	ctx, _ := context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	defer cancel()
 	status, err := run.Wait(ctx)
 	assert.NoError(t, err)
-	assert.Equal(t, _status.Timeout, status)
+	assert.Equal(t, _status.Timeout, status, "expecting Timeout, got %v", status.String())
 }
 
 func TestRunComposeCancel(t *testing.T) {
