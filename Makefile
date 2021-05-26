@@ -32,6 +32,7 @@ test:
 	github.com/factorysh/density/middlewares
 
 generate:
+	go get -u golang.org/x/tools/cmd/stringer
 	go generate ./task
 
 clean:
