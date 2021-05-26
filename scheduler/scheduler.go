@@ -434,5 +434,8 @@ func (s *Scheduler) GetDataDir() string {
 }
 
 func (s *Scheduler) WaitStop() {
+	if !s.started {
+		panic("Scheduler not started.")
+	}
 	s.stopping.Wait()
 }
