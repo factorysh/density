@@ -270,15 +270,15 @@ func (s *Scheduler) execTask(chosen *task.Task) {
 			log.WithError(err).Error()
 		}
 		task.Status = status
-		s.Pubsub.Publish(pubsub.Event{
-			Action: task.Status.String(),
-			Id:     task.Id,
-		})
 		if task.HasCron() {
 			task.Status = _status.Waiting
 			task.PrepareReschedule()
 		}
 		s.tasks.Put(task)
+		s.Pubsub.Publish(pubsub.Event{
+			Action: task.Status.String(),
+			Id:     task.Id,
+		})
 		s.somethingNewHappened.Ping() // a slot is now free, let's try to full it
 	}(ctx, chosen, run, cleanup)
 }
