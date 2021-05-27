@@ -38,7 +38,41 @@ func FirstLast(network *net.IPNet) (net.IP, net.IP) {
 }
 
 func Distance(a, b net.IP) int {
-	return int(binary.BigEndian.Uint32(b) - binary.BigEndian.Uint32(a))
+	ib := binary.BigEndian.Uint32(b)
+	ia := binary.BigEndian.Uint32(a)
+	if ib > ia {
+		return int(ib - ia)
+	}
+	return -int(ia - ib)
+}
+
+func NetDistance(a, b *net.IPNet) (int, error) {
+	af, al := FirstLast(a)
+	bf, bl := FirstLast(b)
+	d := Distance(al, bf)
+	if d > 0 { // a then b
+		return d, nil
+	}
+	return Distance(af, bl), nil
+	// FIXME collision handling
+}
+
+func doesItCollide(a, b *net.IPNet) bool {
+	if a.IP.Equal(b.IP) {
+		return true
+	}
+	_, l := FirstLast(a)
+	f, _ := FirstLast(b)
+	return Distance(l, f) <= 0
+}
+
+func nextNet(a *net.IPNet, mask net.IPMask) *net.IPNet {
+	_, l := FirstLast(a)
+	start := make([]byte, 4)
+	binary.BigEndian.PutUint32(start, binary.BigEndian.Uint32(l)+1)
+	return &net.IPNet{
+		IP:   start,
+		Mask: mask}
 }
 
 func NextAvailableNetwork(networks []*net.IPNet, mini *net.IPNet, max *net.IPNet, mask net.IPMask) (*net.IPNet, error) {
@@ -48,14 +82,33 @@ func NextAvailableNetwork(networks []*net.IPNet, mini *net.IPNet, max *net.IPNet
 	sort.Sort(ByNetwork(networks))
 	_, l := FirstLast(networks[len(networks)-1])
 	fMax, _ := FirstLast(max)
-	ones, _ := mask.Size()
 	d := Distance(l, fMax)
-	if d > intPow(2, (32-ones)) { // there is room in the queue
-		start := make([]byte, 4)
-		binary.BigEndian.PutUint32(start, binary.BigEndian.Uint32(l)+1)
-		return &net.IPNet{
-			IP:   start,
-			Mask: mask}, nil
+	ones, _ := mask.Size()
+	maskSize := intPow(2, (32 - ones))
+	if d > maskSize { // there is room in the queue
+		return nextNet(networks[len(networks)-1], mask), nil
+	} else {
+		poz := 0
+		n := mini
+		for { // FIXME don't loop for ever
+			if doesItCollide(n, networks[poz]) {
+				n = nextNet(n, mask)
+				poz++
+				continue
+			}
+			d, err := NetDistance(n, networks[poz+1])
+			if err != nil {
+				return nil, err
+			}
+			if d < 0 {
+				d = -d
+			}
+			if d >= maskSize {
+				return n, nil
+			}
+			n = nextNet(n, mask)
+			poz++
+		}
 	}
 	return nil, nil
 }
