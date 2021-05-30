@@ -46,24 +46,30 @@ func Distance(a, b net.IP) int {
 	return -int(ia - ib)
 }
 
-func NetDistance(a, b *net.IPNet) (int, error) {
+// NetDistance is absolute distance between 2 networks, if < 0 it's an overlap
+func NetDistance(a, b *net.IPNet) int {
 	af, al := FirstLast(a)
+	iaf := binary.BigEndian.Uint32(af)
+	ial := binary.BigEndian.Uint32(al)
 	bf, bl := FirstLast(b)
-	d := Distance(al, bf)
-	if d > 0 { // a then b
-		return d, nil
+	ibf := binary.BigEndian.Uint32(bf)
+	ibl := binary.BigEndian.Uint32(bl)
+	if iaf == ibf && ial == ibl { // same network
+		return 0
 	}
-	return Distance(af, bl), nil
-	// FIXME collision handling
-}
-
-func doesItCollide(a, b *net.IPNet) bool {
-	if a.IP.Equal(b.IP) {
-		return true
+	if iaf >= ibf && iaf <= ibl { // a start after b
+		// overlap
+		return -int(ibl - iaf)
 	}
-	_, l := FirstLast(a)
-	f, _ := FirstLast(b)
-	return Distance(l, f) <= 0
+	if ibf >= iaf && ibf <= ial { // b start after b
+		// overlap
+		return -int(ial - ibf)
+	}
+	if iaf > ibl { // a is after bf
+		return int(iaf - ibl)
+	}
+	// b is after a
+	return int(ibf - ial)
 }
 
 func nextNet(a *net.IPNet, mask net.IPMask) *net.IPNet {
@@ -91,17 +97,11 @@ func NextAvailableNetwork(networks []*net.IPNet, mini *net.IPNet, max *net.IPNet
 		poz := 0
 		n := mini
 		for { // FIXME don't loop for ever
-			if doesItCollide(n, networks[poz]) {
+			d := NetDistance(n, networks[poz+1])
+			if d < 0 {
 				n = nextNet(n, mask)
 				poz++
 				continue
-			}
-			d, err := NetDistance(n, networks[poz+1])
-			if err != nil {
-				return nil, err
-			}
-			if d < 0 {
-				d = -d
 			}
 			if d >= maskSize {
 				return n, nil

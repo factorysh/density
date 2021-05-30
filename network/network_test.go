@@ -51,11 +51,11 @@ func TestNetDistance(t *testing.T) {
 	assert.NoError(t, err)
 	_, b, err := net.ParseCIDR("172.17.1.0/24")
 	assert.NoError(t, err)
-	d, err := NetDistance(a, b)
-	assert.NoError(t, err)
+	d := NetDistance(a, b)
 	assert.Equal(t, 1, d)
-	d, err = NetDistance(a, a)
-	assert.NoError(t, err)
+	d = NetDistance(b, a)
+	assert.Equal(t, 1, d)
+	d = NetDistance(a, a)
 	assert.Equal(t, 0, d)
 }
 
