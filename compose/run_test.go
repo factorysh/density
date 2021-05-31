@@ -25,7 +25,7 @@ func TestRun(t *testing.T) {
 	fmt.Println(containerResp.ID)
 	dr := &DockerRun{
 		Path:    "/tmp",
-		Id:      containerResp.ID,
+		RID:     containerResp.ID,
 		Start:   time.Now(),
 		Running: true,
 	}
@@ -51,7 +51,7 @@ func TestRunAndTimeout(t *testing.T) {
 	fmt.Println(containerResp.ID)
 	dr := &DockerRun{
 		Path:    "/tmp",
-		Id:      containerResp.ID,
+		RID:     containerResp.ID,
 		Start:   time.Now(),
 		Running: true,
 	}

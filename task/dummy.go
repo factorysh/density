@@ -40,7 +40,7 @@ func (r *DummyRun) Data() run.Data {
 	return run.Data{}
 }
 
-func (r *DummyRun) ID() (string, error) {
+func (r *DummyRun) RunnerID() (string, error) {
 	return fmt.Sprintf("Run of %s", r.da.Name), nil
 }
 
@@ -78,7 +78,7 @@ func (r DummyRun) Down() error {
 }
 
 // Run action interface implementation
-func (da *DummyAction) Up(pwd string, environments map[string]string) (run.Run, error) {
+func (da *DummyAction) Up(pwd string, environments map[string]string, runID int) (run.Run, error) {
 	// Print name
 	fmt.Println("DummyAction.Up :", da.Name)
 	if da.waiters == nil {

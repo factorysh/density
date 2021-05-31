@@ -70,6 +70,8 @@ type Task struct {
 	Environments    map[string]string  `json:"environments,omitempty"`
 	resourceCancel  context.CancelFunc `json:"-"`
 	Run             _run.Run           `json:"run"`
+	RunCounter      int                `json:"run_counter"`
+	Runs            []_run.Data        `json:"runs"`
 	Labels          map[string]string  `json:"labels"`
 }
 
@@ -89,6 +91,8 @@ type Resp struct {
 	Cron            string            `json:"cron"`               // Cron definition. Exclusive with Every
 	Environments    map[string]string `json:"environments,omitempty"`
 	Run             _run.Data         `json:"run"`
+	RunCounter      int               `json:"run_counter"`
+	Runs            []_run.Data       `json:"runs"`
 	Labels          map[string]string `json:"labels"`
 }
 
@@ -110,6 +114,8 @@ func (t *Task) ToTaskResp() Resp {
 		Cron:            t.Cron,
 		Environments:    t.Environments,
 		Run:             t.Run.Data(),
+		RunCounter:      t.RunCounter,
+		Runs:            t.Runs,
 		Labels:          t.Labels,
 	}
 
@@ -159,6 +165,8 @@ type RawTask struct {
 	Cron            string                     `json:"cron"`               // Cron definition. Exclusive with Every
 	Environments    map[string]string          `json:"environments,omitempty"`
 	Run             map[string]json.RawMessage `json:"run"`
+	RunCounter      int                        `json:"run_counter"`
+	Runs            []_run.Data                `json:"runs"`
 	Labels          map[string]string          `json:"labels"`
 }
 
@@ -227,6 +235,8 @@ func (t *Task) UnmarshalJSON(b []byte) error {
 	t.Every = raw.Every
 	t.Cron = raw.Cron
 	t.Environments = raw.Environments
+	t.RunCounter = raw.RunCounter
+	t.Runs = raw.Runs
 	t.Labels = raw.Labels
 
 	return nil
@@ -249,6 +259,8 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		Environments:    t.Environments,
 		Action:          make(map[string]json.RawMessage),
 		Run:             make(map[string]json.RawMessage),
+		RunCounter:      t.RunCounter,
+		Runs:            t.Runs,
 		Labels:          t.Labels,
 	}
 	if t.Action != nil {

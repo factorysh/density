@@ -163,7 +163,7 @@ func (c Compose) guessMainContainer() (string, error) {
 }
 
 // Up compose action
-func (c Compose) Up(workingDirectory string, environments map[string]string) (_run.Run, error) {
+func (c Compose) Up(workingDirectory string, environments map[string]string, runID int) (_run.Run, error) {
 	err := lazyEnsureBin()
 	if err != nil {
 		return nil, err
@@ -244,7 +244,8 @@ func (c Compose) Up(workingDirectory string, environments map[string]string) (_r
 
 	return &DockerRun{
 		Path:    workingDirectory,
-		Id:      containers[0].ID,
+		ID:      runID,
+		RID:     containers[0].ID,
 		Start:   start,
 		Running: true,
 	}, err

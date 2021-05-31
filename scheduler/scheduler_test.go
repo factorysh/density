@@ -203,6 +203,38 @@ func TestFlood(t *testing.T) {
 	wait.Wait()
 }
 
+func TestRunsHistory(t *testing.T) {
+	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	s := New(NewResources(4, 16*1024), runner.New(dir, nil), store.NewMemoryStore())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.Start(ctx)
+
+	wait := waitFor(s.Pubsub, 1, func(event pubsub.Event) bool {
+		return event.Action == "Done" || event.Action == "Timeout"
+	})
+	a := _task.DummyAction{
+		Name: "Test Run History",
+		Wait: 1 * time.Second,
+	}
+	task := &_task.Task{
+		Start:           time.Now(),
+		CPU:             2,
+		RAM:             256,
+		MaxExectionTime: 2 * time.Second,
+		Action:          &a,
+	}
+	_, err = s.Add(task)
+	assert.NoError(t, err)
+	wait.Wait()
+	// get task status from storage
+	fromStorage, err := s.tasks.Get(task.Id)
+	assert.NoError(t, err)
+	assert.Equal(t, _status.Done, fromStorage.Status)
+	assert.Equal(t, 1, len(fromStorage.Runs))
+}
 func TestTimeout(t *testing.T) {
 	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
 	assert.NoError(t, err)

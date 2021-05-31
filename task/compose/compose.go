@@ -14,7 +14,7 @@ func init() {
 	}
 	task.RunRegistry["compose"] = func() run.Run {
 		return &compose.DockerRun{
-			Id:   "",
+			RID:  "",
 			Path: "",
 		}
 	}
