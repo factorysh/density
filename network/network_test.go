@@ -9,6 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestPow(t *testing.T) {
+	assert.Equal(t, 1, intPow(2, 0))
+	assert.Equal(t, 0, intPow(0, 8))
+	assert.Equal(t, 256, intPow(2, 8))
+}
 func TestByNetwork(t *testing.T) {
 	networks := make(ByNetwork, 0)
 	for _, cidr := range []string{
@@ -64,7 +69,16 @@ func TestNetDistance(t *testing.T) {
 }
 
 func TestNext(t *testing.T) {
+	_, min, err := net.ParseCIDR("172.17.0.0/24")
+	assert.NoError(t, err)
+	_, max, err := net.ParseCIDR("172.18.32.0/24")
+	assert.NoError(t, err)
 	networks := make([]*net.IPNet, 0)
+
+	next, err := NextAvailableNetwork(networks, min, max, net.IPMask{255, 255, 255, 0})
+	assert.NoError(t, err)
+	assert.Equal(t, min, next)
+
 	for _, cidr := range []string{
 		"172.18.1.0/24",
 		"172.17.1.0/24",
@@ -74,11 +88,7 @@ func TestNext(t *testing.T) {
 		assert.NoError(t, err)
 		networks = append(networks, n)
 	}
-	_, min, err := net.ParseCIDR("172.17.0.0/24")
-	assert.NoError(t, err)
-	_, max, err := net.ParseCIDR("172.18.32.0/24")
-	assert.NoError(t, err)
-	next, err := NextAvailableNetwork(networks, min, max, net.IPMask{255, 255, 255, 0})
+	next, err = NextAvailableNetwork(networks, min, max, net.IPMask{255, 255, 255, 0})
 	assert.NoError(t, err)
 	_, myNext, err := net.ParseCIDR("172.18.3.0/24")
 	assert.NoError(t, err)
