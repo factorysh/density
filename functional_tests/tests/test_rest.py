@@ -314,7 +314,7 @@ services:
         command: "sh -c 'sleep 1 && echo world'"
 x-batch:
     max_execution_time: 3s
-    every: 1m
+    every: 2s
 """
         },
     )
@@ -326,11 +326,11 @@ x-batch:
     time.sleep(2)
     r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
-    time.sleep(5)
+    time.sleep(4)
     r = session.get("http://localhost:8042/api/task/%s" % id)
     resp = json.loads(r.text)
-    print(resp)
     assert len(resp["runs"]) == 2
+    assert resp["runs"][0]["id"] > resp["runs"][1]["id"]
 
 
 def test_cron(session):
