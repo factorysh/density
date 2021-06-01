@@ -52,11 +52,15 @@ func TestNetDistance(t *testing.T) {
 	_, b, err := net.ParseCIDR("172.17.1.0/24")
 	assert.NoError(t, err)
 	d := NetDistance(a, b)
-	assert.Equal(t, 1, d)
+	assert.Equal(t, 256, d)
 	d = NetDistance(b, a)
-	assert.Equal(t, 1, d)
+	assert.Equal(t, 256, d)
 	d = NetDistance(a, a)
 	assert.Equal(t, 0, d)
+	_, c, err := net.ParseCIDR("172.17.0.0/16")
+	assert.NoError(t, err)
+	d = NetDistance(a, c)
+	assert.True(t, d < 0)
 }
 
 func TestNext(t *testing.T) {
@@ -108,7 +112,7 @@ func TestNextHole(t *testing.T) {
 	for _, cidr := range []string{
 		"172.18.1.0/24",
 		"172.17.0.0/24",
-		"172.18.32.0/24",
+		"172.18.32.0/24", // last slot is used
 	} {
 		_, n, err := net.ParseCIDR(cidr)
 		assert.NoError(t, err)
@@ -118,9 +122,18 @@ func TestNextHole(t *testing.T) {
 	assert.NoError(t, err)
 	_, max, err := net.ParseCIDR("172.18.32.0/24")
 	assert.NoError(t, err)
+
 	next, err := NextAvailableNetwork(networks, min, max, net.IPMask{255, 255, 255, 0})
 	assert.NoError(t, err)
 	_, myNext, err := net.ParseCIDR("172.17.1.0/24")
+	assert.NoError(t, err)
+	assert.Equal(t, myNext, next)
+
+	networks = append(networks, next)
+
+	next, err = NextAvailableNetwork(networks, min, max, net.IPMask{255, 255, 255, 0})
+	assert.NoError(t, err)
+	_, myNext, err = net.ParseCIDR("172.17.2.0/24")
 	assert.NoError(t, err)
 	assert.Equal(t, myNext, next)
 }
