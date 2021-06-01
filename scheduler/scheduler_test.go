@@ -235,6 +235,7 @@ func TestRunsHistory(t *testing.T) {
 	assert.Equal(t, _status.Done, fromStorage.Status)
 	assert.Equal(t, 1, len(fromStorage.Runs))
 }
+
 func TestTimeout(t *testing.T) {
 	dir, err := ioutil.TempDir(os.TempDir(), "scheduler")
 	assert.NoError(t, err)
