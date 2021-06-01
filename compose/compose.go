@@ -238,10 +238,6 @@ func (c Compose) Up(workingDirectory string, environments map[string]string, run
 		return nil, err
 	}
 
-	if len(containers) != 1 {
-		return nil, fmt.Errorf("Multiple containers sharing the same service and project")
-	}
-
 	return &DockerRun{
 		Path:    workingDirectory,
 		ID:      runID,
