@@ -327,6 +327,11 @@ func (t *Task) InjectPredefinedEnv() {
 
 }
 
+// AddRunToHistory adds run to history by prepending it
+func (t *Task) AddRunToHistory(r _run.Run) {
+	t.Runs = append([]_run.Data{r.Data()}, t.Runs...)
+}
+
 // NewTask init a new task
 func NewTask(o string, a action.Action) Task {
 	t := New()

@@ -240,7 +240,7 @@ func (s *Scheduler) execTask(chosen *task.Task) {
 	}).Info()
 	run, err := s.runner.Up(chosen)
 	// save the run to task runs history (latest first)
-	chosen.Runs = append(chosen.Runs, run.Data())
+	chosen.AddRunToHistory(run)
 	if err != nil {
 		chosen.Status = _status.Error
 		cancelResources()
