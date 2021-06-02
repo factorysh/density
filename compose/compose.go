@@ -101,6 +101,23 @@ func (c *Compose) WalkServices(fn func(name string, value map[string]interface{}
 	return nil
 }
 
+const defaultCacheVolume = "./cache:/density/cache"
+
+// InjectCacheVolume adds cache directory as volume to each service in a compose file
+func (c *Compose) InjectCacheVolume() {
+	c.WalkServices(func(_ string, service map[string]interface{}) error {
+		volumesRaw, _ := service["volumes"]
+		volumes, err := castVolumes(volumesRaw)
+		if err != nil {
+			return err
+		}
+
+		service["volumes"] = append(volumes, defaultCacheVolume)
+
+		return nil
+	})
+}
+
 // MarshalYAML is used to marshal a Compose back to its yaml form
 func (c Compose) MarshalYAML() (interface{}, error) {
 
