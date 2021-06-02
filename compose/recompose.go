@@ -73,7 +73,7 @@ func NewRecomposator(docker *client.Client, cfg map[string]interface{}) (*Recomp
 			}
 			r.UseVolumePatcher(patcher)
 		default:
-			return nil, fmt.Errorf("Unknown patch: %s", k)
+			return nil, fmt.Errorf("unknown patch: %s", k)
 		}
 	}
 	return r, nil
