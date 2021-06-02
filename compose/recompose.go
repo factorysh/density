@@ -131,10 +131,6 @@ func (r *Recomposator) Recompose(name string, c *Compose) (*Compose, error) {
 		labels["batch"] = name
 		return nil
 	})
-
-	// Inject cache volume after checks
-	prod.InjectCacheVolume()
-
 	return prod, nil
 }
 
