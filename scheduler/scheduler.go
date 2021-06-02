@@ -239,6 +239,8 @@ func (s *Scheduler) execTask(chosen *task.Task) {
 		"process": s.resources.processes,
 	}).Info()
 	run, err := s.runner.Up(chosen)
+	// save the run to task runs history (latest first)
+	chosen.AddRunToHistory(run)
 	if err != nil {
 		chosen.Status = _status.Error
 		cancelResources()

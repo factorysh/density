@@ -22,7 +22,8 @@ var _ _run.Run = &DockerRun{}
 // DockerRun implements task.Run for Docker
 type DockerRun struct {
 	Path     string    `json:"path"`
-	Id       string    `json:"id"`
+	RID      string    `json:"runner_id"` // RID is internal ID used by the docker runner
+	ID       int       `json:"id"`        // ID is the density run ID for this task
 	Start    time.Time `json:"start"`
 	Finish   time.Time `json:"down"`
 	ExitCode int       `json:"exit_code"`
@@ -34,6 +35,7 @@ func (d *DockerRun) Data() _run.Data {
 	return _run.Data{
 		Start:    d.Start,
 		Finish:   d.Finish,
+		ID:       d.ID,
 		Runner:   d.RegisteredName(),
 		ExitCode: d.ExitCode,
 		Running:  d.Running,
@@ -54,7 +56,7 @@ func (d *DockerRun) Status() (_run.Status, int, error) {
 	ct, err := cli.ContainerList(context.TODO(), types.ContainerListOptions{All: true, Filters: filters.NewArgs(
 		filters.KeyValuePair{
 			Key:   "id",
-			Value: d.Id,
+			Value: d.RID,
 		},
 	)})
 	if err != nil {
@@ -67,7 +69,7 @@ func (d *DockerRun) Status() (_run.Status, int, error) {
 	}
 
 	// exit code is only accessible on inspect
-	inspect, err := cli.ContainerInspect(context.TODO(), d.Id)
+	inspect, err := cli.ContainerInspect(context.TODO(), d.RID)
 	if err != nil {
 		return _run.Unkown, 0, err
 	}
@@ -90,13 +92,13 @@ func (d *DockerRun) Status() (_run.Status, int, error) {
 	return status, inspect.State.ExitCode, nil
 }
 
-// ID will return the Docker container ID of the main container for this run
-func (d *DockerRun) ID() (string, error) {
-	if d.Id == "" {
+// RunnerID will return the Docker container ID of the main container for this run
+func (d *DockerRun) RunnerID() (string, error) {
+	if d.RID == "" {
 		return "", fmt.Errorf("No ID found for this run")
 	}
 
-	return d.Id, nil
+	return d.RID, nil
 }
 
 func (d *DockerRun) Down() error {
@@ -122,7 +124,7 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 	}
 	ctxWait, cancel := context.WithCancel(context.TODO())
 	defer cancel()
-	waitC, errC := cli.ContainerWait(ctxWait, d.Id, "")
+	waitC, errC := cli.ContainerWait(ctxWait, d.RID, "")
 
 	loop := true
 	var status _status.Status
@@ -150,12 +152,12 @@ func (d *DockerRun) Wait(ctx context.Context) (_status.Status, error) {
 	d.Finish = time.Now()
 	if status != 0 {
 		// FIXME `docker-compose down`
-		err = cli.ContainerKill(context.TODO(), d.Id, "KILL")
+		err = cli.ContainerKill(context.TODO(), d.RID, "KILL")
 		if err != nil {
 			return _status.Error, err
 		}
 	}
-	inspect, err := cli.ContainerInspect(context.TODO(), d.Id)
+	inspect, err := cli.ContainerInspect(context.TODO(), d.RID)
 	if err != nil {
 		return _status.Error, err
 	}

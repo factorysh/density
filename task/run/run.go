@@ -11,6 +11,7 @@ import (
 type Data struct {
 	Start    time.Time `json:"start"`
 	Finish   time.Time `json:"finish"`
+	ID       int       `json:"id"`
 	ExitCode int       `json:"exit_code"`
 	Runner   string    `json:"runner"`
 	Running  bool      `json:"running"`
@@ -19,7 +20,7 @@ type Data struct {
 type Run interface {
 	Down() error
 	Wait(context.Context) (status.Status, error)
-	ID() (string, error)
+	RunnerID() (string, error)
 	RegisteredName() string
 	Status() (Status, int, error)
 	Data() Data

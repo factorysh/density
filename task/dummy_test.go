@@ -26,7 +26,7 @@ func TestDummy(t *testing.T) {
 	d := &DummyAction{
 		Name: "bob",
 	}
-	run, err := d.Up("/tmp", nil)
+	run, err := d.Up("/tmp", nil, 0)
 	assert.NoError(t, err)
 	ctx := context.TODO()
 	status, err := run.Wait(ctx)
@@ -39,7 +39,7 @@ func TestDummyCancel(t *testing.T) {
 		Name: "bob",
 		Wait: 30 * time.Millisecond,
 	}
-	run, err := d.Up("/tmp", nil)
+	run, err := d.Up("/tmp", nil, 0)
 	assert.NoError(t, err)
 	ctx, cancel := context.WithCancel(context.TODO())
 	go func() {
@@ -57,7 +57,7 @@ func TestDummyTimeout(t *testing.T) {
 		Name: "bob",
 		Wait: 30 * time.Millisecond,
 	}
-	run, err := d.Up("/tmp", nil)
+	run, err := d.Up("/tmp", nil, 0)
 	assert.NoError(t, err)
 	ctx, _ := context.WithTimeout(context.TODO(), 10*time.Millisecond)
 	status, err := run.Wait(ctx)
