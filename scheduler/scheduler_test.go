@@ -168,6 +168,7 @@ func TestScheduler(t *testing.T) {
 		assert.NoError(t, err)
 		ids = append(ids, id)
 	}
+	fmt.Println("ids", ids)
 	wait.Wait()
 	assert.Equal(t, 3, s.Length())
 	flushed := s.Flush(0)
