@@ -29,6 +29,7 @@ test:
 	github.com/factorysh/density/runner \
 	github.com/factorysh/density/pubsub \
 	github.com/factorysh/density/scheduler \
+	github.com/factorysh/density/network \
 	github.com/factorysh/density/middlewares
 
 generate:
