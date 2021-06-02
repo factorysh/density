@@ -53,10 +53,7 @@ func PatchVolumeInVolumes(target string) (VolumePatcher, error) {
 }
 
 func NewRecomposator(docker *client.Client, cfg map[string]interface{}) (*Recomposator, error) {
-	n, err := NewNetworks(docker)
-	if err != nil {
-		return nil, err
-	}
+	n := NewNetworks(docker)
 	r := &Recomposator{
 		docker:          docker,
 		networks:        n,
