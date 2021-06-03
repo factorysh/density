@@ -19,7 +19,7 @@ run:
 
 test:
 	docker system prune -f
-	go test -cover -timeout 30s \
+	go test -cover -timeout 120s \
 	github.com/factorysh/density/store \
 	github.com/factorysh/density/todo \
 	github.com/factorysh/density/compose \
