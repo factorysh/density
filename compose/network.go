@@ -70,6 +70,23 @@ func (n *Networks) New(project string) (string, error) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 	l := log.WithField("project", project)
+
+	// seach for an existing network for this project
+	networks, err := n.docker.NetworkList(context.TODO(),
+		types.NetworkListOptions{Filters: filters.NewArgs(
+			filters.KeyValuePair{Key: "label", Value: fmt.Sprintf("batch=%s", project)})})
+	if err != nil {
+		return "", err
+	}
+
+	// if a network exists, just reuse it
+	if len(networks) != 0 {
+		networkName := networks[0].Name
+		l = l.WithField("reusing_network", networkName)
+		l.Info()
+		return networkName, nil
+	}
+
 	now := time.Now()
 	subnets, err := SubnetFromDocker(n.docker)
 	l = l.WithField("find_subnets", time.Since(now))
@@ -79,22 +96,8 @@ func (n *Networks) New(project string) (string, error) {
 	for i := 0; i < 2; i++ {
 		now = time.Now()
 		subnet, err := _network.NextAvailableNetwork(subnets, n.min, n.max, n.mask)
-		if err != nil {
-			return "", err
-		}
 		l = l.WithField("find_next_network", time.Since(now)).WithField("subnet", subnet)
 		networkName := fmt.Sprintf("batch-%s-%d-%d", project, subnet.IP[2], subnet.IP[3])
-
-		networks, err := n.docker.NetworkList(context.TODO(),
-			types.NetworkListOptions{Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: networkName})})
-		if err != nil {
-			return "", err
-		}
-
-		// network exists, just reuse it
-		if len(networks) != 0 {
-			return networkName, nil
-		}
 
 		now = time.Now()
 		_, err = n.docker.NetworkCreate(context.TODO(), networkName, types.NetworkCreate{
