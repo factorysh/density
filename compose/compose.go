@@ -106,12 +106,31 @@ const defaultCacheVolume = "./cache:/density/cache"
 // InjectCacheVolume adds cache directory as volume to each service in a compose file
 func (c *Compose) InjectCacheVolume() {
 	c.WalkServices(func(_ string, service map[string]interface{}) error {
-		volumesRaw, _ := service["volumes"]
-		volumes, err := castVolumes(volumesRaw)
-		if err != nil {
-			return err
+		var volumes []string
+
+		// get volumes
+		volumesRaw, found := service["volumes"]
+		if found {
+			var ok bool
+
+			// cast volumes
+			volumes, ok = volumesRaw.([]string)
+			if !ok {
+				return fmt.Errorf("error when getting raw volumes from value %v", service["volumes"])
+			}
 		}
 
+		// overwrite existing cache volume if any
+		for i, vol := range volumes {
+			if strings.HasPrefix(vol, "./cache") {
+				volumes[i] = defaultCacheVolume
+				service["volumes"] = volumes
+				// return early after volumes update
+				return nil
+			}
+		}
+
+		// if not in existing volumes, simply add it
 		service["volumes"] = append(volumes, defaultCacheVolume)
 
 		return nil
