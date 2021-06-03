@@ -85,6 +85,17 @@ func (n *Networks) New(project string) (string, error) {
 		l = l.WithField("find_next_network", time.Since(now)).WithField("subnet", subnet)
 		networkName := fmt.Sprintf("batch-%s-%d-%d", project, subnet.IP[2], subnet.IP[3])
 
+		networks, err := n.docker.NetworkList(context.TODO(),
+			types.NetworkListOptions{Filters: filters.NewArgs(filters.KeyValuePair{Key: "name", Value: networkName})})
+		if err != nil {
+			return "", err
+		}
+
+		// network exists, just reuse it
+		if len(networks) != 0 {
+			return networkName, nil
+		}
+
 		now = time.Now()
 		_, err = n.docker.NetworkCreate(context.TODO(), networkName, types.NetworkCreate{
 			CheckDuplicate: true,
