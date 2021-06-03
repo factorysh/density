@@ -40,5 +40,5 @@ x-batch:
 	fmt.Println(string(out))
 	volumes, err := jsonpath.Get("$.hello.volumes", prod.Services)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"./volumes/tmp:/plop:ro"}, volumes)
+	assert.Equal(t, []string{"./volumes/tmp:/plop:ro", "./cache:/density/cache"}, volumes)
 }
