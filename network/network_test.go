@@ -93,6 +93,25 @@ func TestNext(t *testing.T) {
 	_, myNext, err := net.ParseCIDR("172.18.3.0/24")
 	assert.NoError(t, err)
 	assert.Equal(t, myNext, next)
+	networks = append(networks, next)
+
+	for i := 0; i < 20; i++ {
+		next, err = NextAvailableNetwork(networks, min, max, net.IPMask{255, 255, 255, 0})
+		assert.NoError(t, err)
+		networks = append(networks, next)
+	}
+
+	bag := make(map[string]interface{})
+	for _, n := range networks {
+		bag[n.String()] = new(interface{})
+	}
+
+	fmt.Println(bag)
+	for i := 4; i < 24; i++ {
+		k := fmt.Sprintf("172.18.%d.0/24", i)
+		_, ok := bag[k]
+		assert.True(t, ok, "Oups %s", k)
+	}
 }
 
 func TestNextFirst(t *testing.T) {
