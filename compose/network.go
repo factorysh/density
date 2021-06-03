@@ -96,6 +96,10 @@ func (n *Networks) New(project string) (string, error) {
 	for i := 0; i < 2; i++ {
 		now = time.Now()
 		subnet, err := _network.NextAvailableNetwork(subnets, n.min, n.max, n.mask)
+		if err != nil {
+			return "", err
+		}
+
 		l = l.WithField("find_next_network", time.Since(now)).WithField("subnet", subnet)
 		networkName := fmt.Sprintf("batch-%s-%d-%d", project, subnet.IP[2], subnet.IP[3])
 
