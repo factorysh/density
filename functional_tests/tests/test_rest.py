@@ -365,3 +365,33 @@ x-batch:
     r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
     assert r.json()["status"] == "Waiting"
+
+
+def test_cache(session):
+    r = session.get("http://localhost:8042/api/tasks")
+    assert r.status_code == 200
+
+    r = session.post(
+        "http://localhost:8042/api/tasks",
+        files={
+            "docker-compose": """
+version: '3'
+services:
+    hello:
+        image: "busybox:latest"
+        command: "sh -c 'sleep 2 && touch $XDG_CACHE_HOME/test'"
+x-batch:
+    max_execution_time: 3s
+"""
+        },
+    )
+
+    assert r.status_code == 201
+    resp = json.loads(r.text)
+    id = resp["id"]
+
+    time.sleep(3)
+    r = session.get("http://localhost:8042/api/task/%s" % id)
+    assert r.status_code == 200
+    assert r.json()["status"] == "Running"
+    assert os.path.isfile(f"/tmp/density/wd/{id}/cache/test")

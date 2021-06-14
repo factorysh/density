@@ -310,6 +310,8 @@ func (t *Task) PrepareReschedule() {
 
 }
 
+const defaultCachePath = "/density/cache"
+
 // InjectPredefinedEnv is used to inject or modifiy Density predefined env variables
 func (t *Task) InjectPredefinedEnv() {
 
@@ -322,6 +324,7 @@ func (t *Task) InjectPredefinedEnv() {
 	t.Environments["DENSITY_STARTED_AT_TIME"] = now.Format("11:49:02")
 	t.Environments["DENSITY_TASK_ID"] = t.Id.String()
 	t.Environments["DENSITY"] = "true"
+	t.Environments["XDG_CACHE_HOME"] = defaultCachePath
 	t.Environments["DENSITY_RUNNER"] = t.Action.RegisteredName()
 	t.Environments["DENSITY_MAX_EXECUTION_TIME"] = t.MaxExectionTime.String()
 
