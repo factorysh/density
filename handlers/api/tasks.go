@@ -12,7 +12,6 @@ import (
 	"github.com/factorysh/density/claims"
 	rawCompose "github.com/factorysh/density/compose"
 	"github.com/factorysh/density/input/compose"
-	_path "github.com/factorysh/density/path"
 	"github.com/factorysh/density/task"
 	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
@@ -247,14 +246,10 @@ func (a *API) HandleGetVolumes(c *claims.Claims, w http.ResponseWriter, r *http.
 	}
 
 	// fetch authorized path from token
-	p, err := _path.FromCtx(r.Context())
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return nil, err
-	}
+	c, err := claims.FromCtx(r.Context())
 
 	// if no token found return an error
-	if p == "" {
+	if c.Path == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return nil, fmt.Errorf("Missing path claim in JWT token")
 	}
@@ -268,7 +263,7 @@ func (a *API) HandleGetVolumes(c *claims.Claims, w http.ResponseWriter, r *http.
 	// join path parts to get full path
 	fullPath := path.Join(a.GetDataDir(), jobID, "volumes", subPath)
 
-	matching, err := zg.Match(string(p), fullPath)
+	matching, err := zg.Match(string(c.Path), fullPath)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil, err

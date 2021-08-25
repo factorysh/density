@@ -394,4 +394,5 @@ x-batch:
     r = session.get("http://localhost:8042/api/task/%s" % id)
     assert r.status_code == 200
     assert r.json()["status"] == "Running"
+    time.sleep(1)
     assert os.path.isfile(f"/tmp/density/wd/{id}/cache/test")
