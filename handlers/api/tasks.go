@@ -9,9 +9,9 @@ import (
 	"path"
 	"strings"
 
+	"github.com/factorysh/density/claims"
 	rawCompose "github.com/factorysh/density/compose"
 	"github.com/factorysh/density/input/compose"
-	"github.com/factorysh/density/owner"
 	_path "github.com/factorysh/density/path"
 	"github.com/factorysh/density/task"
 	"github.com/getsentry/sentry-go"
@@ -28,17 +28,17 @@ const JOB = "job"
 const MAXFORMMEM = 1024
 
 // HandleGetTasks handles a get on /schedules endpoint
-func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
+func (a *API) HandleGetTasks(c *claims.Claims, w http.ResponseWriter,
 	r *http.Request) (interface{}, error) {
 	labels := make(map[string]string)
 	var ts []*task.Task
 	// toSend array contains task with translated to task.Resp, removing private task fields
 	toSend := []task.Resp{}
 	vars := mux.Vars(r)
-	o, filter := vars[owner.OWNER]
+	o, filter := vars["owner"]
 
 	// unpriviledged user can't request with a filter option
-	if !u.Admin && filter {
+	if !c.Admin && filter {
 		w.WriteHeader(http.StatusUnauthorized)
 		return nil, nil
 	}
@@ -53,7 +53,7 @@ func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
 	}
 
 	// if user is an admin
-	if u.Admin {
+	if c.Admin {
 		if filter || len(labels) > 1 {
 			// request with a filter
 			ts = a.schd.Filter(o, labels)
@@ -63,7 +63,7 @@ func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
 		}
 	} else {
 		// used context information to get current user name
-		ts = a.schd.Filter(u.Name, labels)
+		ts = a.schd.Filter(o, labels)
 	}
 
 	for _, t := range ts {
@@ -74,10 +74,10 @@ func (a *API) HandleGetTasks(u *owner.Owner, w http.ResponseWriter,
 }
 
 // HandlePostTasks handles a post on /tasks endpoint
-func (a *API) HandlePostTasks(u *owner.Owner,
+func (a *API) HandlePostTasks(c *claims.Claims,
 	w http.ResponseWriter, r *http.Request) (interface{}, error) {
 	vars := mux.Vars(r)
-	o, explicit := vars[owner.OWNER]
+	o, explicit := vars["owner"]
 
 	t := new(task.Task)
 
@@ -174,18 +174,18 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 		return nil, fmt.Errorf("Validate errors %v", errs)
 	}
 	// unpriviledged user can't create explicit job
-	if !u.Admin && explicit {
+	if !c.Admin && explicit {
 		w.WriteHeader(http.StatusUnauthorized)
 		return nil, nil
 	}
 
 	// if user is admin and request for an explicit task creation
-	if u.Admin && explicit {
+	if c.Admin && explicit {
 		// use parameter as owner
 		t.Owner = o
 	} else {
 		// else, just use the user passed in the context
-		t.Owner = u.Name
+		t.Owner = c.Owner
 	}
 	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 		hub.WithScope(func(scope *sentry.Scope) {
@@ -207,7 +207,7 @@ func (a *API) HandlePostTasks(u *owner.Owner,
 }
 
 // HandleDeleteTasks handle a delete on schedules
-func (a *API) HandleDeleteTasks(u *owner.Owner,
+func (a *API) HandleDeleteTasks(u *claims.Claims,
 	w http.ResponseWriter, r *http.Request) (interface{}, error) {
 	params := r.URL.Query()
 	vars := mux.Vars(r)
@@ -236,7 +236,7 @@ func (a *API) HandleDeleteTasks(u *owner.Owner,
 }
 
 // HandleGetVolumes handler a Get query to retrive file status from a task volume
-func (a *API) HandleGetVolumes(u *owner.Owner, w http.ResponseWriter, r *http.Request) (interface{}, error) {
+func (a *API) HandleGetVolumes(c *claims.Claims, w http.ResponseWriter, r *http.Request) (interface{}, error) {
 
 	vars := mux.Vars(r)
 	jobID, ok := vars[JOB]
@@ -276,7 +276,7 @@ func (a *API) HandleGetVolumes(u *owner.Owner, w http.ResponseWriter, r *http.Re
 
 	if !matching {
 		w.WriteHeader(http.StatusUnauthorized)
-		return nil, fmt.Errorf("Unauthorization triggered for user %s on path %s", u.Name, fullPath)
+		return nil, fmt.Errorf("Unauthorization triggered for user %s on path %s", c.Owner, fullPath)
 	}
 
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {

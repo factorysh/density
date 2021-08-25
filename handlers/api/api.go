@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/factorysh/density/claims"
 	"github.com/factorysh/density/middlewares"
-	"github.com/factorysh/density/owner"
 	"github.com/factorysh/density/scheduler"
 	"github.com/factorysh/density/task"
 	"github.com/getsentry/sentry-go"
@@ -36,12 +36,12 @@ func RegisterAPI(router *mux.Router, schd *scheduler.Scheduler, validator *task.
 	router.PathPrefix("/tasks/{job}/volume/").Handler(api.wrapMyHandler(api.HandleGetVolumes)).Methods(http.MethodGet)
 }
 
-func (a *API) wrapMyHandler(handler func(*owner.Owner, http.ResponseWriter,
+func (a *API) wrapMyHandler(handler func(*claims.Claims, http.ResponseWriter,
 	*http.Request) (interface{}, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		hub := sentry.GetHubFromContext(r.Context())
-		u, err := owner.FromCtx(r.Context())
+		u, err := claims.FromCtx(r.Context())
 		if err != nil {
 			hub.CaptureException(err)
 			w.WriteHeader(http.StatusBadRequest)
