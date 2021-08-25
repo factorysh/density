@@ -1,14 +1,14 @@
 package middlewares
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/factorysh/density/owner"
-	"github.com/factorysh/density/path"
+	"github.com/cristalhq/jwt/v3"
+	owner "github.com/factorysh/density/claims"
 	"github.com/getsentry/sentry-go"
 )
 
@@ -23,45 +23,44 @@ func Auth(key string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			t, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-				}
+			verifier, err := jwt.NewVerifierHS(jwt.HS256, []byte(key))
+			if err != nil {
+				fmt.Println(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 
-				return []byte(key), nil
-			})
-			if err != nil || !t.Valid {
+			t, err := jwt.ParseAndVerify([]byte(token), verifier)
+			if err != nil {
 				fmt.Println(err)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
-			claims, ok := t.Claims.(jwt.MapClaims)
-			if !ok {
+			// owner claims
+			var claims owner.Claims
+			err = json.Unmarshal(t.RawClaims(), &claims)
+			if err != nil {
+				fmt.Println(err)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			fmt.Println("debug", string(t.RawClaims()), claims)
+			err = claims.Validate()
+			if err != nil {
+				fmt.Println(err)
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
+
 			if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 				hub.WithScope(func(scope *sentry.Scope) {
 					scope.SetExtra("jwt", claims)
 				})
 			}
 
-			u, err := owner.FromJWT(claims)
-			if err != nil {
-				fmt.Println(err)
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			ctx := u.ToCtx(r.Context())
-
-			p, err := path.FromJWT(claims)
-			if err != nil {
-				fmt.Println(err)
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			ctx = p.ToCtx(ctx)
+			ctx := claims.ToCtx(r.Context())
 
 			if add {
 				addCookie(w, token)
