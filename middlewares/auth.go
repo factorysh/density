@@ -46,7 +46,6 @@ func Auth(key string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			fmt.Println("debug", string(t.RawClaims()), claims)
 			err = claims.Validate()
 			if err != nil {
 				fmt.Println(err)
