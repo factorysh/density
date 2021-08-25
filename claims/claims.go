@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/cristalhq/jwt/v3"
 )
 
 type contextKey string
@@ -14,6 +16,7 @@ var (
 
 // Claims represents all the data found in JWT Claims
 type Claims struct {
+	jwt.StandardClaims
 	Owner string `json:"owner"`
 	Admin bool   `json:"admin"`
 	Path  string `json:"path"`
@@ -21,6 +24,7 @@ type Claims struct {
 
 // Validate data owner struct
 func (c *Claims) Validate() error {
+	// FIXME: add standard claims check
 	if c.Owner == "" {
 		return fmt.Errorf("invalid owner name")
 	}
