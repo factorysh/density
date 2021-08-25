@@ -11,10 +11,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/cristalhq/jwt/v3"
 	"github.com/docker/docker/client"
+	"github.com/factorysh/density/claims"
 	"github.com/factorysh/density/compose"
 	"github.com/factorysh/density/runner"
 	"github.com/factorysh/density/scheduler"
@@ -100,18 +100,29 @@ type testClient struct {
 }
 
 func newClient(root, key string) (*testClient, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"owner": "bob",
-		"nbf":   time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
-	})
-	blob, err := token.SignedString([]byte(key))
+	signer, err := jwt.NewSignerHS(jwt.HS256, []byte(key))
 	if err != nil {
 		return nil, err
 	}
+
+	// create claims (you can create your own, see: Example_BuildUserClaims)
+	claims := &claims.Claims{
+		Owner: "bob",
+	}
+
+	// create a Builder
+	builder := jwt.NewBuilder(signer)
+
+	// and build a Token
+	token, err := builder.Build(claims)
+	if err != nil {
+		return nil, err
+	}
+
 	return &testClient{
 		root:          root,
 		client:        &http.Client{},
-		authorization: fmt.Sprintf("Bearer %s", blob),
+		authorization: fmt.Sprintf("Bearer %s", token.String()),
 	}, nil
 }
 

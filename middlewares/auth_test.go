@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/cristalhq/jwt/v3"
+	"github.com/factorysh/density/claims"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,30 +29,26 @@ func TestAuth(t *testing.T) {
 	client := &http.Client{}
 
 	type fixture struct {
-		claim  jwt.MapClaims
+		claim  claims.Claims
 		key    []byte
 		status int
 	}
 	for _, a := range []fixture{
 		{ // it's ok
-			claim: jwt.MapClaims{
-				"owner": "bob",
-				"nbf":   time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
+			claim: claims.Claims{
+				Owner: "bob",
 			},
 			key:    []byte(key),
 			status: 200,
 		},
 		{ // owner is missing
-			claim: jwt.MapClaims{
-				"nbf": time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
-			},
+			claim:  claims.Claims{},
 			key:    []byte(key),
 			status: 400,
 		},
 		{ // wrong key
-			claim: jwt.MapClaims{
-				"owner": "bob",
-				"nbf":   time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
+			claim: claims.Claims{
+				Owner: "bob",
 			},
 			key:    []byte("wrong key"),
 			status: 401,
@@ -60,10 +56,13 @@ func TestAuth(t *testing.T) {
 	} {
 		r, err := http.NewRequest("GET", ts.URL, nil)
 		assert.NoError(t, err)
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, a.claim)
-		blob, err := token.SignedString(a.key)
+		signer, err := jwt.NewSignerHS(jwt.HS256, []byte(a.key))
 		assert.NoError(t, err)
-		r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", blob))
+		builder := jwt.NewBuilder(signer)
+		token, err := builder.Build(a.claim)
+		assert.NoError(t, err)
+		assert.NoError(t, err)
+		r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 		res, err = client.Do(r)
 		assert.NoError(t, err)
 		assert.Equal(t, a.status, res.StatusCode)
