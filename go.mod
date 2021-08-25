@@ -6,7 +6,6 @@ require (
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/cristalhq/jwt/v3 v3.1.0
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v17.12.1-ce+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
